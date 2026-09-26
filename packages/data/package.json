@@ -1,0 +1,11 @@
+{
+  "name": "@frame-one/data",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Movie spot seed data, stills, and vantage reference images",
+  "main": "./data/spots.json",
+  "exports": {
+    "./spots": "./data/spots.json",
+    "./assets/*": "./assets/*"
+  }
+}

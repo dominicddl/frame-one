@@ -1,5 +1,5 @@
 {
-  "name": "@frame-one/api",
+  "name": "@frame-one/match",
   "version": "0.1.0",
   "private": true,
   "main": "./dist/index.js",

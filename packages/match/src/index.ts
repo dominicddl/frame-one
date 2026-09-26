@@ -11,11 +11,13 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
-const publicDir = path.join(__dirname, "..", "public");
-app.use(express.static(publicDir));
-
-const spotsPath = path.join(__dirname, "..", "data", "spots.json");
+// Load spot data from @frame-one/data package
+const dataPackageDir = path.join(__dirname, "..", "..", "data");
+const spotsPath = path.join(dataPackageDir, "data", "spots.json");
 const spots: Spot[] = JSON.parse(fs.readFileSync(spotsPath, "utf-8"));
+
+// Serve data package assets
+app.use("/assets/spots", express.static(path.join(dataPackageDir, "assets", "spots")));
 
 /** Haversine distance in meters */
 function distanceMeters(
@@ -72,7 +74,7 @@ function buildGoNext(matched: Spot): GoNextItem[] {
 }
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, service: "frame-one-api", spots: spots.length });
+  res.json({ ok: true, service: "frame-one-match", spots: spots.length });
 });
 
 app.get("/api/spots", (_req, res) => {
@@ -126,6 +128,6 @@ app.post("/api/match", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[api] FRAME ONE listening on http://localhost:${PORT}`);
-  console.log(`[api] ${spots.length} spots loaded; mergeOk within ${MERGE_OK_METERS}m`);
+  console.log(`[match] FRAME ONE listening on http://localhost:${PORT}`);
+  console.log(`[match] ${spots.length} spots loaded; mergeOk within ${MERGE_OK_METERS}m`);
 });

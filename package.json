@@ -6,13 +6,13 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w @frame-one/api\" \"npm run dev -w @frame-one/web\"",
-    "dev:api": "npm run dev -w @frame-one/api",
+    "dev": "concurrently -n match,web -c blue,green \"npm run dev -w @frame-one/match\" \"npm run dev -w @frame-one/web\"",
+    "dev:match": "npm run dev -w @frame-one/match",
     "dev:web": "npm run dev -w @frame-one/web",
-    "build": "npm run build -w @frame-one/shared && npm run build -w @frame-one/api && npm run build -w @frame-one/web",
+    "build": "npm run build -w @frame-one/shared && npm run build -w @frame-one/match && npm run build -w @frame-one/web",
     "build:shared": "npm run build -w @frame-one/shared",
     "predev": "npm run build -w @frame-one/shared",
-    "predev:api": "npm run build -w @frame-one/shared"
+    "predev:match": "npm run build -w @frame-one/shared"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
