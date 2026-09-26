@@ -19,6 +19,18 @@ const dataPackageDir = path.join(__dirname, "..", "..", "data");
 const spotsPath = path.join(dataPackageDir, "data", "spots.json");
 const spots: Spot[] = JSON.parse(fs.readFileSync(spotsPath, "utf-8"));
 
+// Load matching catalog (Person B's curated image assets)
+const matchingCatalogPath = path.join(dataPackageDir, "assets", "spots", "matching-catalog.json");
+let matchingCatalog: any = null;
+let candidateSpotIds: string[] = [];
+try {
+  matchingCatalog = JSON.parse(fs.readFileSync(matchingCatalogPath, "utf-8"));
+  candidateSpotIds = matchingCatalog.candidateSpotIds || [];
+  console.log(`[match] Loaded matching catalog with ${candidateSpotIds.length} candidates`);
+} catch (err) {
+  console.log(`[match] No matching catalog found; using all spots for matching`);
+}
+
 // Serve data package assets
 app.use("/assets/spots", express.static(path.join(dataPackageDir, "assets", "spots")));
 
@@ -112,18 +124,23 @@ app.post("/api/match", async (req, res) => {
 
   const candidates = filterCandidatesByQuery(body.movieQuery);
   
+  // Prefer matching catalog candidates when available for photo retrieval
+  const photoCandidates = candidateSpotIds.length > 0 && body.photoDataUrl
+    ? candidates.filter(s => candidateSpotIds.includes(s.spotId))
+    : candidates;
+  
   let spot: Spot;
   let mergeOk = false;
   let retrievalScore: number | undefined;
 
   if (body.photoDataUrl && hasVisionApiKey()) {
     console.log(
-      `[match] Photo provided with API key; using retrieval-first (${candidates.length} candidates)`
+      `[match] Photo provided with API key; using retrieval-first (${photoCandidates.length} photo candidates from ${candidates.length} total)`
     );
 
     const retrievalResult = await retrieveSpotByPhoto(
       body.photoDataUrl,
-      candidates,
+      photoCandidates.length > 0 ? photoCandidates : candidates,
       dataPackageDir
     );
 
