@@ -1,0 +1,35 @@
+[
+  {
+    "spotId": "tasm2-red-steps",
+    "filmTitle": "The Amazing Spider-Man 2",
+    "year": 2014,
+    "lat": 40.7580,
+    "lng": -73.9855,
+    "neighbourhood": "Times Square",
+    "stillUrl": "/assets/spots/tasm2-red-steps/still.svg",
+    "vantageUrl": "/assets/spots/tasm2-red-steps/vantage.svg",
+    "keywords": ["spider-man", "spiderman", "amazing spider-man", "tasm", "red steps", "times square"]
+  },
+  {
+    "spotId": "ghostbusters-firehouse",
+    "filmTitle": "Ghostbusters",
+    "year": 1984,
+    "lat": 40.7195,
+    "lng": -74.0066,
+    "neighbourhood": "Tribeca",
+    "stillUrl": "/assets/spots/ghostbusters-firehouse/still.svg",
+    "vantageUrl": "/assets/spots/ghostbusters-firehouse/vantage.svg",
+    "keywords": ["ghostbusters", "ghost busters", "firehouse", "fire house", "hook and ladder"]
+  },
+  {
+    "spotId": "night-museum-steps",
+    "filmTitle": "Night at the Museum",
+    "year": 2006,
+    "lat": 40.7812,
+    "lng": -73.9665,
+    "neighbourhood": "Upper East Side",
+    "stillUrl": "/assets/spots/night-museum-steps/still.svg",
+    "vantageUrl": "/assets/spots/night-museum-steps/vantage.svg",
+    "keywords": ["night at the museum", "museum", "natural history", "amnh", "night museum"]
+  }
+]
