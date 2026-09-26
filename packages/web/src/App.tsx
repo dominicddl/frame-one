@@ -1,4 +1,4 @@
-import { useState, useRef, type CSSProperties } from "react";
+import { useState, useRef, useEffect, type CSSProperties } from "react";
 import type { MatchResponse } from "@frame-one/shared";
 import { postMatch } from "./api/client";
 
@@ -25,6 +25,12 @@ export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+    }
+  }, [cameraStream]);
+
   async function startCamera() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -33,9 +39,6 @@ export default function App() {
       });
       setCameraStream(stream);
       setShowCamera(true);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
     } catch (err) {
       console.error("Camera access failed:", err);
       setError("Camera access denied. Please use upload instead.");
@@ -443,7 +446,7 @@ export default function App() {
             </p>
           </div>
           <img
-            src={`/assets${match.stillUrl}`}
+            src={match.stillUrl}
             alt="film still"
             style={{
               width: "100%",
@@ -488,7 +491,7 @@ export default function App() {
             </p>
           </div>
           <img
-            src={`/assets${match.vantageUrl}`}
+            src={match.vantageUrl}
             alt="vantage"
             style={{
               width: "100%",
