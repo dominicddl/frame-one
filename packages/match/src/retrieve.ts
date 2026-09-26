@@ -5,10 +5,13 @@
 import fs from "fs";
 import path from "path";
 import type { Spot } from "@frame-one/shared";
-import { hasVisionApiKey, rankSpotsByPhotoSimilarity } from "./vision-xai";
+import {
+  hasVisionApiKey,
+  rankSpotsByPhotoSimilarity,
+  forcedChoiceFallback,
+} from "./vision-openai";
 
 const RETRIEVAL_CONFIDENCE_THRESHOLD = 60;
-const AI_FALLBACK_THRESHOLD = 50;
 
 export interface RetrievalResult {
   spotId: string;
@@ -18,8 +21,30 @@ export interface RetrievalResult {
   reasoning?: string;
 }
 
+function resolveStillPath(stillUrl: string, dataPackageDir: string): string {
+  const cleanPath = stillUrl.replace(/^\//, "");
+  
+  const absolutePath = path.join(dataPackageDir, cleanPath);
+  
+  if (fs.existsSync(absolutePath)) {
+    return absolutePath;
+  }
+  
+  const legacyPath = path.join(dataPackageDir, "assets", "spots", path.dirname(cleanPath), "still.svg");
+  if (fs.existsSync(legacyPath)) {
+    return legacyPath;
+  }
+  
+  return absolutePath;
+}
+
 function loadImageAsDataUrl(assetPath: string): string {
   try {
+    if (!fs.existsSync(assetPath)) {
+      console.error(`[retrieve] File not found: ${assetPath}`);
+      return "";
+    }
+
     const buffer = fs.readFileSync(assetPath);
     const ext = path.extname(assetPath).toLowerCase();
     
@@ -57,13 +82,7 @@ export async function retrieveSpotByPhoto(
 
   const candidatesWithImages = candidates
     .map((spot) => {
-      const stillPath = path.join(
-        dataPackageDir,
-        "assets",
-        "spots",
-        spot.spotId,
-        "still.svg"
-      );
+      const stillPath = resolveStillPath(spot.stillUrl, dataPackageDir);
       const stillDataUrl = loadImageAsDataUrl(stillPath);
       
       if (!stillDataUrl) {
@@ -106,29 +125,26 @@ export async function retrieveSpotByPhoto(
     confidence = "medium";
   }
 
-  let usedFallback = false;
-
   if (topScore < RETRIEVAL_CONFIDENCE_THRESHOLD) {
     console.log(
-      `[retrieve] Top score ${topScore} below threshold ${RETRIEVAL_CONFIDENCE_THRESHOLD}, attempting AI fallback...`
+      `[retrieve] Top score ${topScore} below threshold ${RETRIEVAL_CONFIDENCE_THRESHOLD}, attempting forced-choice fallback...`
     );
     
-    const fallbackRanked = await rankSpotsByPhotoSimilarity(
+    const fallbackResult = await forcedChoiceFallback(
       userPhotoDataUrl,
       candidatesWithImages
     );
 
-    if (fallbackRanked.length > 0 && fallbackRanked[0].score >= AI_FALLBACK_THRESHOLD) {
-      usedFallback = true;
+    if (fallbackResult) {
       console.log(
-        `[retrieve] AI fallback improved score to ${fallbackRanked[0].score}`
+        `[retrieve] Forced-choice fallback selected ${fallbackResult.spotId}`
       );
       return {
-        spotId: fallbackRanked[0].spotId,
-        score: fallbackRanked[0].score,
-        confidence: fallbackRanked[0].score >= 60 ? "medium" : "low",
+        spotId: fallbackResult.spotId,
+        score: 50,
+        confidence: "medium",
         usedFallback: true,
-        reasoning: fallbackRanked[0].reasoning,
+        reasoning: fallbackResult.reasoning,
       };
     }
   }
@@ -137,7 +153,7 @@ export async function retrieveSpotByPhoto(
     spotId: topMatch.spotId,
     score: topScore,
     confidence,
-    usedFallback,
+    usedFallback: false,
     reasoning: topMatch.reasoning,
   };
 }

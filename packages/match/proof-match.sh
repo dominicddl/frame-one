@@ -9,11 +9,11 @@ echo ""
 
 # Check if vision API key is available
 HAS_API_KEY=false
-if [[ -n "${XAI_API_KEY:-}" ]] || [[ -n "${GROK_API_KEY:-}" ]]; then
+if [[ -n "${OPENAI_API_KEY:-}" ]]; then
   HAS_API_KEY=true
-  echo "✓ Vision API key detected (XAI_API_KEY or GROK_API_KEY)"
+  echo "✓ OpenAI API key detected (OPENAI_API_KEY)"
 else
-  echo "⚠ No vision API key; photo retrieval tests will be skipped"
+  echo "⚠ No OpenAI API key; photo retrieval tests will be skipped"
 fi
 echo ""
 
@@ -119,7 +119,7 @@ if [[ "$HAS_API_KEY" == "true" ]]; then
   echo ""
 else
   echo "7. Skipping photo retrieval test (no API key)"
-  echo "   To test: export XAI_API_KEY or GROK_API_KEY and re-run"
+  echo "   To test: export OPENAI_API_KEY and re-run"
   echo ""
 fi
 

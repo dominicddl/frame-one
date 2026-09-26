@@ -3,7 +3,7 @@
 ## Quick Summary
 
 ✅ **No-key GPS fallback**: PROVEN (all tests passing on VM)  
-⚠️ **Vision retrieval**: READY (requires `XAI_API_KEY` on Dominic's Grok Bot box)
+⚠️ **Vision retrieval**: READY (requires `OPENAI_API_KEY`)
 
 ---
 
@@ -11,8 +11,8 @@
 
 ### When Photo + API Key Present
 1. Filter candidates by optional `movieQuery`
-2. **Vision scoring**: Load catalog stills → xAI Grok API → rank by similarity (0-100)
-3. **AI fallback**: If top score < 60, retry with stronger prompt
+2. **Vision scoring**: Load catalog stills → OpenAI GPT-4o vision → rank by similarity (0-100)
+3. **Forced-choice fallback**: If top score < 60, use stronger prompt forcing model to pick from candidate list
 4. Return best match with `mergeOk` based on score (≥60) OR GPS (≤150m)
 
 ### When No Photo OR No API Key
@@ -26,7 +26,7 @@
 
 ### Environment
 ```bash
-$ echo $XAI_API_KEY
+$ echo $OPENAI_API_KEY
 # (empty - no key on VM)
 
 $ npm run build
@@ -35,7 +35,7 @@ $ npm run build
 $ npm run dev:match
 # [match] FRAME ONE listening on http://localhost:3001
 # [match] 3 spots loaded; mergeOk within 150m or score >=60
-# [match] ⚠ No XAI_API_KEY/GROK_API_KEY (GPS fallback only)
+# [match] ⚠ No OPENAI_API_KEY (GPS fallback only)
 ```
 
 ### Test 1: GPS Near Match
@@ -69,20 +69,18 @@ curl -X POST http://localhost:3001/api/match \
 
 ---
 
-## Enablement: Vision Retrieval (Grok Bot Box)
+## Enablement: Vision Retrieval (OpenAI)
 
 ### Prerequisites
-1. Dominic has set `XAI_API_KEY` on Grok Bot box (confirmed)
-2. xAI account with access to `grok-vision-beta` model
-3. API endpoint: `https://api.x.ai/v1/chat/completions`
+1. OpenAI account with API access
+2. Model: **`gpt-4o`** (GPT-4 with vision)
+3. API endpoint: `https://api.openai.com/v1/chat/completions`
 
 ### Local Testing Setup
 
 ```bash
-# Export your xAI API key (either name works)
-export XAI_API_KEY="xai-your-key-here"
-# OR
-export GROK_API_KEY="xai-your-key-here"
+# Export your OpenAI API key
+export OPENAI_API_KEY="sk-proj-..."
 
 # Start server
 cd /workspace
@@ -91,7 +89,7 @@ npm run dev:match
 # Server should now log:
 # [match] FRAME ONE listening on http://localhost:3001
 # [match] 3 spots loaded; mergeOk within 150m or score >=60
-# [match] ✓ Vision API key found
+# [match] ✓ OpenAI API key found
 ```
 
 ### Test With Real Photo
@@ -137,13 +135,16 @@ curl -X POST http://localhost:3001/api/match \
 | Uncertain photo | 40-59 | >150m | ❌ false | Low retrieval + far GPS |
 | Wrong location photo | 0-39 | Any | Uses GPS fallback | Retrieval failed, GPS decides |
 
-### AI Fallback Behavior
+### Forced-Choice Fallback Behavior
 
 When top retrieval score < 60:
-1. Server logs: `[retrieve] Top score XX below threshold 60, attempting AI fallback...`
-2. Re-run vision scoring with same catalog (second-pass)
-3. If fallback score ≥ 50, use fallback result
-4. Server logs: `[retrieve] AI fallback improved score to XX`
+1. Server logs: `[retrieve] Top score XX below threshold 60, attempting forced-choice fallback...`
+2. Invoke OpenAI with **different prompt**: shows all candidate stills + user photo, forces model to pick one
+3. Model must respond with `{"spotId": "...", "reasoning": "..."}`
+4. Server logs: `[retrieve] Forced-choice fallback selected tasm2-red-steps`
+5. Returns with `score: 50`, `confidence: "medium"`, `usedFallback: true`
+
+This is a **real AI fallback** (not just re-running the same scorer).
 
 ---
 
@@ -151,13 +152,15 @@ When top retrieval score < 60:
 
 ### Vision API Request Format
 
+**Initial ranking (score each candidate 0-100):**
+
 ```typescript
-POST https://api.x.ai/v1/chat/completions
-Authorization: Bearer $XAI_API_KEY
+POST https://api.openai.com/v1/chat/completions
+Authorization: Bearer $OPENAI_API_KEY
 Content-Type: application/json
 
 {
-  "model": "grok-vision-beta",
+  "model": "gpt-4o",
   "messages": [
     {
       "role": "user",
@@ -170,6 +173,32 @@ Content-Type: application/json
   ],
   "temperature": 0.1,
   "max_tokens": 200
+}
+```
+
+**Forced-choice fallback (pick one from list):**
+
+```typescript
+POST https://api.openai.com/v1/chat/completions
+Authorization: Bearer $OPENAI_API_KEY
+Content-Type: application/json
+
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        { "type": "text", "text": "Pick the single best match from: 1. tasm2-red-steps, 2. ghostbusters-firehouse, 3. night-museum-steps..." },
+        { "type": "image_url", "image_url": { "url": "data:image/jpeg;base64,..." } },
+        { "type": "image_url", "image_url": { "url": "data:image/svg+xml;base64,..." } },
+        { "type": "image_url", "image_url": { "url": "data:image/svg+xml;base64,..." } },
+        { "type": "image_url", "image_url": { "url": "data:image/svg+xml;base64,..." } }
+      ]
+    }
+  ],
+  "temperature": 0.3,
+  "max_tokens": 150
 }
 ```
 
@@ -187,20 +216,52 @@ Content-Type: application/json
 }
 ```
 
+**Note**: The implementation strips markdown fences (````json` / ` ````) before parsing to handle cases where GPT-4o wraps JSON in code blocks.
+
+---
+
+## Implementation Details
+
+### Still Path Resolution
+
+Instead of hardcoding `still.svg`, the implementation:
+1. Reads each spot's `stillUrl` field (e.g. `/assets/spots/tasm2-red-steps/still.svg`)
+2. Strips leading `/` and resolves relative to `packages/data/`
+3. Falls back to legacy `still.svg` if exact path not found
+4. Supports: `.jpg`, `.jpeg`, `.png`, `.svg`, `.webp`
+
+### Robust JSON Parsing
+
+```typescript
+function parseJsonResponse(content: string) {
+  let cleaned = content.trim();
+  // Strip markdown fences: ```json ... ``` or ``` ... ```
+  cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
+  
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    return { score: 0, reasoning: "Parse error" };
+  }
+}
+```
+
+On parse failure, returns `score: 0` and continues (graceful degradation to GPS).
+
 ---
 
 ## Troubleshooting
 
-### "No content in xAI response"
-- Check API key is valid
-- Verify `grok-vision-beta` model access
-- Check xAI API status
+### "No content in OpenAI response"
+- Check API key is valid: `echo $OPENAI_API_KEY`
+- Verify OpenAI account has API access
+- Check OpenAI API status: https://status.openai.com
 
-### "xAI API error (401)"
+### "OpenAI API error (401)"
 - API key missing or invalid
 - Server will fall back to GPS (graceful degradation)
 
-### "xAI API error (429)"
+### "OpenAI API error (429)"
 - Rate limit exceeded
 - Server will return score: 0 and fall back to GPS
 
@@ -209,14 +270,20 @@ Content-Type: application/json
 - Replace with actual film stills for better matching
 - Tune thresholds based on production data
 
+### Forced-choice returns invalid spotId
+- Model may hallucinate spotIds not in the list
+- Implementation validates and returns null on invalid choice
+- Falls back to GPS
+
 ---
 
 ## Files Modified
 
-- `packages/match/src/vision-xai.ts` — xAI Grok API client
-- `packages/match/src/retrieve.ts` — Retrieval orchestration
-- `packages/match/src/index.ts` — Match endpoint integration
-- `packages/match/proof-match.sh` — Extended test suite
+- `packages/match/src/vision-openai.ts` — OpenAI GPT-4o vision client (NEW, replaces vision-xai.ts)
+- `packages/match/src/retrieve.ts` — Updated for OpenAI + forced-choice fallback
+- `packages/match/src/index.ts` — Import from vision-openai
+- `packages/match/proof-match.sh` — Updated for OPENAI_API_KEY
+- `packages/match/RETRIEVAL_PROOF.md` — This file (updated for OpenAI)
 
 ## No Breaking Changes
 
@@ -224,13 +291,26 @@ Content-Type: application/json
 ✅ Existing API shape unchanged  
 ✅ No edits to `packages/web/` or `packages/data/`  
 ✅ `packages/shared/` types unchanged  
-✅ Demo stays reliable without API key
+✅ Demo stays reliable without API key  
+✅ Always returns a catalog match (no web scraping, no no-match state)
+
+---
+
+## Technical Improvements
+
+### vs Previous Implementation (xAI)
+
+1. **Real AI fallback**: Forced-choice with different prompt, not just re-running the same scorer
+2. **Robust JSON parsing**: Strips markdown fences before parsing
+3. **Flexible still resolution**: Uses spot's `stillUrl` field, supports jpg/png/svg/webp
+4. **Better model**: GPT-4o vision generally more accurate than grok-vision-beta
+5. **Cleaner API**: Single env var (`OPENAI_API_KEY`) vs aliases
 
 ---
 
 ## Next Steps
 
-1. ✅ Deploy to environment with `XAI_API_KEY`
+1. ✅ Deploy to environment with `OPENAI_API_KEY`
 2. 🔄 Test with real user photos vs catalog stills
 3. 🔄 Replace SVG placeholders with actual film stills in `packages/data/`
 4. 🔄 Tune confidence thresholds based on production data
