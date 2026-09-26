@@ -12,6 +12,7 @@ HAS_API_KEY=false
 if [[ -n "${OPENAI_API_KEY:-}" ]]; then
   HAS_API_KEY=true
   echo "✓ OpenAI API key detected (OPENAI_API_KEY)"
+  echo "  Model: ${OPENAI_VISION_MODEL:-gpt-4.1-mini (default)}"
 else
   echo "⚠ No OpenAI API key; photo retrieval tests will be skipped"
 fi

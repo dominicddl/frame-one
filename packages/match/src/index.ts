@@ -3,7 +3,7 @@ import cors from "cors";
 import path from "path";
 import fs from "fs";
 import type { Spot, MatchRequest, MatchResponse, GoNextItem } from "@frame-one/shared";
-import { hasVisionApiKey } from "./vision-openai";
+import { hasVisionApiKey, getVisionModelInfo } from "./vision-openai";
 import { retrieveSpotByPhoto } from "./retrieve";
 
 const PORT = Number(process.env.PORT) || 3001;
@@ -186,7 +186,7 @@ app.post("/api/match", async (req, res) => {
 
 app.listen(PORT, () => {
   const visionStatus = hasVisionApiKey()
-    ? "✓ OpenAI API key found"
+    ? `✓ OpenAI API key found (model: ${getVisionModelInfo()})`
     : "⚠ No OPENAI_API_KEY (GPS fallback only)";
   console.log(`[match] FRAME ONE listening on http://localhost:${PORT}`);
   console.log(`[match] ${spots.length} spots loaded; mergeOk within ${MERGE_OK_METERS}m or score >=${MERGE_OK_RETRIEVAL_SCORE}`);

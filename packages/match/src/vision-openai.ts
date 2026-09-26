@@ -1,6 +1,7 @@
 /**
  * OpenAI Vision API client for photo similarity scoring
- * Uses gpt-4o model via https://api.openai.com/v1/chat/completions
+ * Default model: gpt-4.1-mini (override with OPENAI_VISION_MODEL env var)
+ * Endpoint: https://api.openai.com/v1/chat/completions
  */
 
 export interface VisionScoreResult {
@@ -9,14 +10,24 @@ export interface VisionScoreResult {
 }
 
 const OPENAI_API_BASE = "https://api.openai.com/v1";
-const OPENAI_MODEL = "gpt-4o";
+const OPENAI_DEFAULT_MODEL = "gpt-4.1-mini";
 
 function getApiKey(): string | undefined {
   return process.env.OPENAI_API_KEY;
 }
 
+function getModel(): string {
+  return process.env.OPENAI_VISION_MODEL || OPENAI_DEFAULT_MODEL;
+}
+
 export function hasVisionApiKey(): boolean {
   return !!getApiKey();
+}
+
+export function getVisionModelInfo(): string {
+  const model = getModel();
+  const isDefault = !process.env.OPENAI_VISION_MODEL;
+  return isDefault ? `${model} (default)` : `${model} (via OPENAI_VISION_MODEL)`;
 }
 
 function parseJsonResponse(content: string): { score: number; reasoning?: string } {
@@ -69,7 +80,7 @@ Respond ONLY with JSON: {"score": number, "reasoning": "brief explanation"}`;
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: OPENAI_MODEL,
+        model: getModel(),
         messages: [
           {
             role: "user",
@@ -170,7 +181,7 @@ Respond ONLY with JSON: {"spotId": "exact-spotId-from-list", "reasoning": "brief
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: OPENAI_MODEL,
+        model: getModel(),
         messages: [
           {
             role: "user",

@@ -11,7 +11,7 @@
 
 ### When Photo + API Key Present
 1. Filter candidates by optional `movieQuery`
-2. **Vision scoring**: Load catalog stills → OpenAI GPT-4o vision → rank by similarity (0-100)
+2. **Vision scoring**: Load catalog stills → OpenAI GPT-4.1-mini vision → rank by similarity (0-100)
 3. **Forced-choice fallback**: If top score < 60, use stronger prompt forcing model to pick from candidate list
 4. Return best match with `mergeOk` based on score (≥60) OR GPS (≤150m)
 
@@ -73,7 +73,7 @@ curl -X POST http://localhost:3001/api/match \
 
 ### Prerequisites
 1. OpenAI account with API access
-2. Model: **`gpt-4o`** (GPT-4 with vision)
+2. Model: **`gpt-4.1-mini`** (default, or override with `OPENAI_VISION_MODEL`)
 3. API endpoint: `https://api.openai.com/v1/chat/completions`
 
 ### Local Testing Setup
@@ -82,6 +82,9 @@ curl -X POST http://localhost:3001/api/match \
 # Export your OpenAI API key
 export OPENAI_API_KEY="sk-proj-..."
 
+# Optional: Override default model (gpt-4.1-mini)
+# export OPENAI_VISION_MODEL="gpt-4o"
+
 # Start server
 cd /workspace
 npm run dev:match
@@ -89,7 +92,7 @@ npm run dev:match
 # Server should now log:
 # [match] FRAME ONE listening on http://localhost:3001
 # [match] 3 spots loaded; mergeOk within 150m or score >=60
-# [match] ✓ OpenAI API key found
+# [match] ✓ OpenAI API key found (model: gpt-4.1-mini (default))
 ```
 
 ### Test With Real Photo
@@ -160,7 +163,7 @@ Authorization: Bearer $OPENAI_API_KEY
 Content-Type: application/json
 
 {
-  "model": "gpt-4o",
+  "model": "gpt-4.1-mini",  // default, or $OPENAI_VISION_MODEL
   "messages": [
     {
       "role": "user",
@@ -184,7 +187,7 @@ Authorization: Bearer $OPENAI_API_KEY
 Content-Type: application/json
 
 {
-  "model": "gpt-4o",
+  "model": "gpt-4.1-mini",  // default, or $OPENAI_VISION_MODEL
   "messages": [
     {
       "role": "user",
