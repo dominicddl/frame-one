@@ -519,49 +519,255 @@ export default function App() {
           >
             6. Map Unlock
           </h2>
+          
           <div
             style={{
-              padding: "1.5rem",
+              position: "relative",
+              minHeight: "300px",
+              background: "linear-gradient(180deg, #c5dff8 0%, #a6cee3 100%)",
+              borderRadius: "var(--radius-xl)",
+              border: "2px solid var(--warm-border)",
+              padding: "1rem",
+              marginBottom: "1rem",
+              overflow: "hidden",
+            }}
+          >
+            <svg
+              viewBox="0 0 300 400"
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                opacity: 0.3,
+              }}
+            >
+              <path
+                d="M100,50 L120,80 L140,70 L160,120 L180,140 L200,180 L210,220 L200,260 L180,300 L160,340 L140,360 L120,350 L100,320 L80,280 L70,240 L80,200 L90,160 L95,120 L100,80 Z"
+                fill="var(--canvas)"
+                stroke="var(--warm-border)"
+                strokeWidth="2"
+              />
+            </svg>
+
+            <div style={{ position: "relative", zIndex: 1 }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "0.75rem",
+                  justifyContent: "center",
+                  padding: "1rem 0",
+                }}
+              >
+                {match && (
+                  <div
+                    key={match.spotId}
+                    style={{
+                      width: "80px",
+                      height: "80px",
+                      background: "linear-gradient(135deg, #ff6b9d 0%, #c06c84 100%)",
+                      border: "3px solid var(--ink)",
+                      borderRadius: "var(--radius-sm)",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "0.5rem",
+                      boxShadow: "0 2px 0 rgba(0,0,0,0.2)",
+                      cursor: "pointer",
+                      transition: "transform 0.2s",
+                    }}
+                    title={`${match.filmTitle} (${match.year})`}
+                  >
+                    <div style={{ fontSize: "1.5rem" }}>🎬</div>
+                    <div
+                      style={{
+                        fontSize: "0.6rem",
+                        fontWeight: 600,
+                        textAlign: "center",
+                        marginTop: "0.25rem",
+                        color: "var(--canvas)",
+                        lineHeight: 1.1,
+                      }}
+                    >
+                      {match.filmTitle.split(" ")[0]}
+                    </div>
+                  </div>
+                )}
+
+                {match?.goNext.slice(0, 3).map((g, idx) => {
+                  const colors = [
+                    "linear-gradient(135deg, #a8e6cf 0%, #56c596 100%)",
+                    "linear-gradient(135deg, #ffd93d 0%, #f6b93b 100%)", 
+                    "linear-gradient(135deg, #a8d8ea 0%, #6eb5d0 100%)",
+                  ];
+                  return (
+                    <div
+                      key={g.spotId}
+                      style={{
+                        width: "80px",
+                        height: "80px",
+                        background: colors[idx % colors.length],
+                        border: "3px solid var(--ink)",
+                        borderRadius: "var(--radius-sm)",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "0.5rem",
+                        boxShadow: "0 2px 0 rgba(0,0,0,0.2)",
+                        cursor: "pointer",
+                      }}
+                      title={g.label}
+                    >
+                      <div style={{ fontSize: "1.5rem" }}>🎞️</div>
+                      <div
+                        style={{
+                          fontSize: "0.6rem",
+                          fontWeight: 600,
+                          textAlign: "center",
+                          marginTop: "0.25rem",
+                          color: "var(--ink)",
+                          lineHeight: 1.1,
+                        }}
+                      >
+                        {g.label.split(" ").slice(0, 2).join(" ")}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={`locked-${i}`}
+                    style={{
+                      width: "80px",
+                      height: "80px",
+                      background: "#d4d4d4",
+                      border: "3px solid #999",
+                      borderRadius: "var(--radius-sm)",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "0.5rem",
+                      boxShadow: "inset 0 2px 4px rgba(0,0,0,0.15)",
+                      opacity: 0.5,
+                      filter: "grayscale(1)",
+                    }}
+                  >
+                    <div style={{ fontSize: "1.5rem", opacity: 0.5 }}>🔒</div>
+                    <div
+                      style={{
+                        fontSize: "0.6rem",
+                        fontWeight: 600,
+                        textAlign: "center",
+                        marginTop: "0.25rem",
+                        color: "#666",
+                      }}
+                    >
+                      Locked
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div
+                style={{
+                  background: "var(--canvas)",
+                  border: "2px solid var(--ink)",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "0.75rem",
+                  margin: "1rem auto 0",
+                  maxWidth: "220px",
+                  textAlign: "center",
+                  boxShadow: "0 2px 0 rgba(0,0,0,0.1)",
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: "var(--font-display)",
+                    fontSize: "1.1rem",
+                    marginBottom: "0.25rem",
+                  }}
+                >
+                  I 🎞️ NY
+                </div>
+                <div style={{ fontSize: "0.75rem", opacity: 0.7 }}>
+                  {match ? "1 spot unlocked" : "Keep exploring"}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <details
+            style={{
               background: "var(--warm-surface)",
-              borderRadius: "var(--radius-lg)",
               border: "1px solid var(--warm-border)",
+              borderRadius: "var(--radius-sm)",
+              padding: "0.75rem",
               marginBottom: "1rem",
             }}
           >
-            <p style={{ margin: "0 0 1rem", opacity: 0.8 }}>
-              Stub: shadowed icon → colourful stamp; fog clears; goNext peeks.
-            </p>
+            <summary
+              style={{
+                cursor: "pointer",
+                fontWeight: 500,
+                fontSize: "0.9rem",
+              }}
+            >
+              Unlocked Locations
+            </summary>
             {match && (
               <ul
                 style={{
                   listStyle: "none",
                   padding: 0,
-                  margin: 0,
+                  margin: "0.75rem 0 0",
                   display: "flex",
                   flexDirection: "column",
                   gap: "0.5rem",
                 }}
               >
-                {match.goNext.map((g) => (
+                <li
+                  style={{
+                    padding: "0.5rem",
+                    background: "var(--accent-lavender)",
+                    borderRadius: "var(--radius-sm)",
+                    border: "1px solid var(--warm-border)",
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  <strong>{match.filmTitle} ({match.year})</strong>
+                  <br />
+                  <span style={{ opacity: 0.7, fontSize: "0.8rem" }}>
+                    {match.lat.toFixed(4)}, {match.lng.toFixed(4)}
+                  </span>
+                </li>
+                {match.goNext.slice(0, 3).map((g) => (
                   <li
                     key={g.spotId}
                     style={{
-                      padding: "0.75rem",
+                      padding: "0.5rem",
                       background: "var(--canvas)",
                       borderRadius: "var(--radius-sm)",
                       border: "1px solid var(--warm-border)",
+                      fontSize: "0.85rem",
                     }}
                   >
                     <strong>{g.label}</strong>
                     <br />
-                    <span style={{ fontSize: "0.85rem", opacity: 0.7 }}>
+                    <span style={{ opacity: 0.7, fontSize: "0.8rem" }}>
                       {g.lat.toFixed(4)}, {g.lng.toFixed(4)}
                     </span>
                   </li>
                 ))}
               </ul>
             )}
-          </div>
+          </details>
+
           <button
             type="button"
             onClick={() => {
