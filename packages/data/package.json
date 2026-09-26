@@ -7,5 +7,25 @@
   "exports": {
     "./spots": "./data/spots.json",
     "./assets/*": "./assets/*"
+  },
+  "scripts": {
+    "build": "tsc",
+    "seed:spots": "tsx src/seedSpots.ts",
+    "sync:images": "tsx src/syncSpotImages.ts",
+    "test": "tsx --test test/*.test.ts",
+    "verify": "tsx src/verifyCatalog.ts",
+    "export:matching": "tsx src/exportMatchingCatalog.ts"
+  },
+  "dependencies": {
+    "@frame-one/shared": "*",
+    "mongodb": "^7.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=22.10.0"
   }
 }

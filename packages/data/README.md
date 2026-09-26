@@ -2,11 +2,41 @@
 
 **Owner: Person B** — Database, seed data, and movie still assets.
 
+Photo matching: [integration handoff and readiness](PHOTO-MATCHING-HANDOFF.md).
+Run `npm run export:matching` to publish the reviewed image manifest and
+`npm run verify:data` to compare the catalog with Atlas and check asset hashes.
+
 This package contains all the **curated NYC movie spots** for the FRAME ONE map: spot metadata, hero stills, and vantage reference images.
 
 ---
 
 ## What's here
+
+Database tools now live in `src/` in this package. From the repository root:
+
+```sh
+npm run seed:spots   # Upsert catalog into Atlas and create indexes
+npm run sync:images  # Update image URLs after adding photos
+npm run test:data
+```
+
+Both commands read `MONGODB_URI` and `MONGODB_DB` (default `movie_spots`) from
+the root `.env.local`. This file stays gitignored. Node 22.10+ is required.
+MongoDB stores GeoJSON coordinates in `[longitude, latitude]` order.
+
+Put photos in `packages/data/assets/spots/<spotId>/`, named `still.jpg` and
+`vantage.jpg` (JPEG, PNG and WebP also accepted). See
+[photo instructions](assets/spots/README.md). Both commands update image URLs
+in Atlas and the JSON catalog so Dominic's existing JSON-loading match server
+can use the photos. Restart `npm run dev:match` after syncing.
+
+Matching stays in `packages/match/`, owned by Dominic. It currently reads the
+JSON catalog, not Atlas. `src/mongodb.ts` provides `loadActiveSpots()` for future
+Atlas integration without changing the matching algorithm.
+
+Local database metadata adds `sceneName`, `mergeRadiusM`, and `active`; the
+shared frontend contract is unchanged. Seeding updates all catalog fields;
+image sync updates only image URLs and retains missing image roles.
 
 ```
 packages/data/

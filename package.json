@@ -9,10 +9,16 @@
     "dev": "concurrently -n match,web -c blue,green \"npm run dev -w @frame-one/match\" \"npm run dev -w @frame-one/web\"",
     "dev:match": "npm run dev -w @frame-one/match",
     "dev:web": "npm run dev -w @frame-one/web",
-    "build": "npm run build -w @frame-one/shared && npm run build -w @frame-one/match && npm run build -w @frame-one/web",
+    "build": "npm run build -w @frame-one/shared && npm run build -w @frame-one/data && npm run build -w @frame-one/match && npm run build -w @frame-one/web",
     "build:shared": "npm run build -w @frame-one/shared",
     "predev": "npm run build -w @frame-one/shared",
-    "predev:match": "npm run build -w @frame-one/shared"
+    "predev:match": "npm run build -w @frame-one/shared",
+    "seed:spots": "npm run seed:spots -w @frame-one/data",
+    "sync:images": "npm run sync:images -w @frame-one/data",
+    "test:data": "npm run test -w @frame-one/data",
+    "build:data": "npm run build -w @frame-one/data",
+    "verify:data": "npm run verify -w @frame-one/data",
+    "export:matching": "npm run export:matching -w @frame-one/data"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

@@ -3,12 +3,55 @@
     "spotId": "tasm2-red-steps",
     "filmTitle": "The Amazing Spider-Man 2",
     "year": 2014,
-    "lat": 40.7580,
+    "lat": 40.758,
     "lng": -73.9855,
     "neighbourhood": "Times Square",
-    "stillUrl": "/assets/spots/tasm2-red-steps/still.svg",
-    "vantageUrl": "/assets/spots/tasm2-red-steps/vantage.svg",
-    "keywords": ["spider-man", "spiderman", "amazing spider-man", "tasm", "red steps", "times square"]
+    "stillUrl": "/assets/spots/tasm2-red-steps/still.png",
+    "vantageUrl": "/assets/spots/tasm2-red-steps/vantage.jpg",
+    "keywords": [
+      "spider-man",
+      "spiderman",
+      "amazing spider-man",
+      "tasm",
+      "red steps",
+      "times square",
+      "electro"
+    ],
+    "sceneName": "Times Square Electro Fight",
+    "mergeRadiusM": 120,
+    "active": true,
+    "matchingAssets": {
+      "still": {
+        "url": "/assets/spots/tasm2-red-steps/still.png",
+        "width": 1284,
+        "height": 702,
+        "mimeType": "image/png",
+        "sha256": "1efc8335805e0ee43dd3f5c27036e82abf2ed5aecb59604bbcc79b4c907b03eb",
+        "source": "user-upload",
+        "rightsStatus": "not independently verified"
+      },
+      "vantage": {
+        "url": "/assets/spots/tasm2-red-steps/vantage.jpg",
+        "width": 1280,
+        "height": 944,
+        "mimeType": "image/jpeg",
+        "sha256": "c96a4077c7c764c9b0858a45d7c17ad03140ca4872259381e8557df1b999677c",
+        "title": "TKTS red stairs jeh.JPG",
+        "sourcePage": "https://commons.wikimedia.org/wiki/File:TKTS_red_stairs_jeh.JPG",
+        "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/b/bf/TKTS_red_stairs_jeh.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+        "downloadUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bf/TKTS_red_stairs_jeh.JPG/1280px-TKTS_red_stairs_jeh.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "author": "Jim.henderson",
+        "license": "Public domain",
+        "licenseUrl": "https://commons.wikimedia.org/wiki/Commons:Public_domain",
+        "capturedAt": "Taken on 20 February 2009",
+        "retrievedAt": "2026-09-26",
+        "changes": "Commons-provided thumbnail; no local crop or edit.",
+        "viewpointQuality": "approximate",
+        "viewpointNotes": "Red steps and adjacent buildings visible; side angle and daylight differ. Photo is from 2009, not a current-condition survey."
+      },
+      "prototypeEligible": true,
+      "alignmentValidated": false
+    }
   },
   {
     "spotId": "ghostbusters-firehouse",
@@ -19,7 +62,16 @@
     "neighbourhood": "Tribeca",
     "stillUrl": "/assets/spots/ghostbusters-firehouse/still.svg",
     "vantageUrl": "/assets/spots/ghostbusters-firehouse/vantage.svg",
-    "keywords": ["ghostbusters", "ghost busters", "firehouse", "fire house", "hook and ladder"]
+    "keywords": [
+      "ghostbusters",
+      "ghost busters",
+      "firehouse",
+      "fire house",
+      "hook and ladder"
+    ],
+    "sceneName": "Hook & Ladder 8 Headquarters",
+    "mergeRadiusM": 150,
+    "active": true
   },
   {
     "spotId": "night-museum-steps",
@@ -27,9 +79,401 @@
     "year": 2006,
     "lat": 40.7812,
     "lng": -73.9665,
-    "neighbourhood": "Upper East Side",
+    "neighbourhood": "Upper West Side",
     "stillUrl": "/assets/spots/night-museum-steps/still.svg",
     "vantageUrl": "/assets/spots/night-museum-steps/vantage.svg",
-    "keywords": ["night at the museum", "museum", "natural history", "amnh", "night museum"]
+    "keywords": [
+      "night at the museum",
+      "museum",
+      "natural history",
+      "amnh",
+      "night museum"
+    ],
+    "sceneName": "American Museum of Natural History Entrance",
+    "mergeRadiusM": 150,
+    "active": true
+  },
+  {
+    "spotId": "enchanted-brooklyn-bridge",
+    "filmTitle": "Enchanted",
+    "year": 2007,
+    "sceneName": "Brooklyn Bridge Date",
+    "lat": 40.7061,
+    "lng": -73.9969,
+    "neighbourhood": "Brooklyn Bridge",
+    "stillUrl": "/assets/spots/enchanted-brooklyn-bridge/still.png",
+    "vantageUrl": "/assets/spots/enchanted-brooklyn-bridge/vantage.jpg",
+    "keywords": [
+      "enchanted",
+      "giselle",
+      "edward",
+      "brooklyn bridge"
+    ],
+    "mergeRadiusM": 150,
+    "active": true,
+    "matchingAssets": {
+      "still": {
+        "url": "/assets/spots/enchanted-brooklyn-bridge/still.png",
+        "width": 1281,
+        "height": 714,
+        "mimeType": "image/png",
+        "sha256": "c91bb0d5867f3cb28148670e854ebf7c1923d921b1495e77aaf3ef8593bec5a0",
+        "source": "user-upload",
+        "rightsStatus": "not independently verified"
+      },
+      "vantage": {
+        "url": "/assets/spots/enchanted-brooklyn-bridge/vantage.jpg",
+        "width": 1280,
+        "height": 960,
+        "mimeType": "image/jpeg",
+        "sha256": "6d93b41dd0d7fd47b1c442c6bda56bd294d4b8ca2e6210413701e8586c905074",
+        "title": "2024-06-15 09 55 03 View from the pedestrian walkway of the Brooklyn Bridge northwestward towards the Manhattan tower in Manhattan, New York City, New York.jpg",
+        "sourcePage": "https://commons.wikimedia.org/wiki/File:2024-06-15_09_55_03_View_from_the_pedestrian_walkway_of_the_Brooklyn_Bridge_northwestward_towards_the_Manhattan_tower_in_Manhattan,_New_York_City,_New_York.jpg",
+        "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/9/94/2024-06-15_09_55_03_View_from_the_pedestrian_walkway_of_the_Brooklyn_Bridge_northwestward_towards_the_Manhattan_tower_in_Manhattan%2C_New_York_City%2C_New_York.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+        "downloadUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/94/2024-06-15_09_55_03_View_from_the_pedestrian_walkway_of_the_Brooklyn_Bridge_northwestward_towards_the_Manhattan_tower_in_Manhattan%2C_New_York_City%2C_New_York.jpg/1280px-2024-06-15_09_55_03_View_from_the_pedestrian_walkway_of_the_Brooklyn_Bridge_northwestward_towards_the_Manhattan_tower_in_Manhattan%2C_New_York_City%2C_New_York.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "author": "Famartin",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+        "capturedAt": "2024-06-15 09:55:03",
+        "retrievedAt": "2026-09-26",
+        "changes": "Commons-provided thumbnail; no local crop or edit.",
+        "viewpointQuality": "approximate",
+        "viewpointNotes": "Manhattan tower and walkway visible; camera distance and framing differ."
+      },
+      "prototypeEligible": true,
+      "alignmentValidated": false
+    }
+  },
+  {
+    "spotId": "friends-benefits-grand-central",
+    "filmTitle": "Friends with Benefits",
+    "year": 2011,
+    "sceneName": "Grand Central Flash Mob",
+    "lat": 40.7527,
+    "lng": -73.9772,
+    "neighbourhood": "Midtown East",
+    "stillUrl": "/assets/spots/friends-benefits-grand-central/still.png",
+    "vantageUrl": "/assets/spots/friends-benefits-grand-central/vantage.jpg",
+    "keywords": [
+      "friends with benefits",
+      "grand central",
+      "flash mob"
+    ],
+    "mergeRadiusM": 150,
+    "active": true,
+    "matchingAssets": {
+      "still": {
+        "url": "/assets/spots/friends-benefits-grand-central/still.png",
+        "width": 1271,
+        "height": 537,
+        "mimeType": "image/png",
+        "sha256": "7286e57de804bc603f61822f5825ba2226002b22aae4ba55efe5bfc31c9658da",
+        "source": "user-upload",
+        "rightsStatus": "not independently verified"
+      },
+      "vantage": {
+        "url": "/assets/spots/friends-benefits-grand-central/vantage.jpg",
+        "width": 1280,
+        "height": 793,
+        "mimeType": "image/jpeg",
+        "sha256": "6d9d8cc517b1841213e59e4b938ad0ae3d2416e96ecc48b09dc28d5cd6375417",
+        "title": "GCT Main Concourse.jpg",
+        "sourcePage": "https://commons.wikimedia.org/wiki/File:GCT_Main_Concourse.jpg",
+        "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/6/62/GCT_Main_Concourse.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+        "downloadUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/62/GCT_Main_Concourse.jpg/1280px-GCT_Main_Concourse.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "author": "Ɱ",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+        "capturedAt": "2019-01-07",
+        "retrievedAt": "2026-09-26",
+        "changes": "Commons-provided thumbnail; no local crop or edit.",
+        "viewpointQuality": "approximate",
+        "viewpointNotes": "Elevated main-concourse view with information clock; framing differs from film."
+      },
+      "prototypeEligible": true,
+      "alignmentValidated": false
+    }
+  },
+  {
+    "spotId": "home-alone-radio-city",
+    "filmTitle": "Home Alone 2: Lost in New York",
+    "year": 1992,
+    "sceneName": "Radio City Sightseeing",
+    "lat": 40.7599,
+    "lng": -73.9799,
+    "neighbourhood": "Midtown",
+    "stillUrl": "/assets/spots/home-alone-radio-city/still.png",
+    "vantageUrl": "/assets/spots/home-alone-radio-city/vantage.jpg",
+    "keywords": [
+      "home alone",
+      "home alone 2",
+      "kevin",
+      "radio city"
+    ],
+    "mergeRadiusM": 150,
+    "active": true,
+    "matchingAssets": {
+      "still": {
+        "url": "/assets/spots/home-alone-radio-city/still.png",
+        "width": 1308,
+        "height": 748,
+        "mimeType": "image/png",
+        "sha256": "a617207fb5dd0975448dc9f9d6fb9480e1bf9ea7ece45fc9c9ae1381293f7a97",
+        "source": "user-upload",
+        "rightsStatus": "not independently verified"
+      },
+      "vantage": {
+        "url": "/assets/spots/home-alone-radio-city/vantage.jpg",
+        "width": 1280,
+        "height": 960,
+        "mimeType": "image/jpeg",
+        "sha256": "fa096c1786bdd535606e45729d6e6981a59f0fc2f0896b6a32ff6b686acbe3a8",
+        "title": "Radio City Music Hall, September 2024 02.jpg",
+        "sourcePage": "https://commons.wikimedia.org/wiki/File:Radio_City_Music_Hall,_September_2024_02.jpg",
+        "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/f/f2/Radio_City_Music_Hall%2C_September_2024_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+        "downloadUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f2/Radio_City_Music_Hall%2C_September_2024_02.jpg/1280px-Radio_City_Music_Hall%2C_September_2024_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "author": "DaHuzyBru",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+        "capturedAt": "2024-09-30 08:21:47",
+        "retrievedAt": "2026-09-26",
+        "changes": "Commons-provided thumbnail; no local crop or edit.",
+        "viewpointQuality": "approximate",
+        "viewpointNotes": "Street-level corner view with both signs and marquee; compare architecture rather than people."
+      },
+      "prototypeEligible": true,
+      "alignmentValidated": false
+    }
+  },
+  {
+    "spotId": "home-alone-battery-park",
+    "filmTitle": "Home Alone 2: Lost in New York",
+    "year": 1992,
+    "sceneName": "Statue of Liberty Binoculars",
+    "lat": 40.7033,
+    "lng": -74.017,
+    "neighbourhood": "The Battery",
+    "stillUrl": "/assets/spots/home-alone-battery-park/still.png",
+    "vantageUrl": "/assets/spots/home-alone-battery-park/vantage.jpg",
+    "keywords": [
+      "home alone",
+      "home alone 2",
+      "kevin",
+      "battery park",
+      "binoculars",
+      "statue of liberty"
+    ],
+    "mergeRadiusM": 150,
+    "active": true,
+    "matchingAssets": {
+      "still": {
+        "url": "/assets/spots/home-alone-battery-park/still.png",
+        "width": 1320,
+        "height": 736,
+        "mimeType": "image/png",
+        "sha256": "f8d363e0369b53ab404b827696973f9bf78fb7a33363a24380f69cca90b4b271",
+        "source": "user-upload",
+        "rightsStatus": "not independently verified"
+      },
+      "vantage": {
+        "url": "/assets/spots/home-alone-battery-park/vantage.jpg",
+        "width": 1280,
+        "height": 627,
+        "mimeType": "image/jpeg",
+        "sha256": "5b787b9390696ca359ccf3b0de5e0a96703d93f06ade41b76278102c2e13bd26",
+        "title": "View from Battery Park - panoramio.jpg",
+        "sourcePage": "https://commons.wikimedia.org/wiki/File:View_from_Battery_Park_-_panoramio.jpg",
+        "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/0/0b/View_from_Battery_Park_-_panoramio.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+        "downloadUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0b/View_from_Battery_Park_-_panoramio.jpg/1280px-View_from_Battery_Park_-_panoramio.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "author": "James Roberts (Jampp…",
+        "license": "CC BY-SA 3.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+        "capturedAt": "Taken on 19 August 2010",
+        "retrievedAt": "2026-09-26",
+        "changes": "Commons-provided thumbnail; no local crop or edit.",
+        "viewpointQuality": "context-only",
+        "viewpointNotes": "Harbor and Statue of Liberty visible; no binoculars or matching railing. Photo dates to 2010. Not suitable for viewpoint alignment."
+      },
+      "prototypeEligible": false,
+      "alignmentValidated": false
+    }
+  },
+  {
+    "spotId": "joker-bronx-stairs",
+    "filmTitle": "Joker",
+    "year": 2019,
+    "sceneName": "Staircase Dance",
+    "lat": 40.835892,
+    "lng": -73.923897,
+    "neighbourhood": "Highbridge, Bronx",
+    "stillUrl": "/assets/spots/joker-bronx-stairs/still.jpg",
+    "vantageUrl": "/assets/spots/joker-bronx-stairs/vantage.jpg",
+    "keywords": [
+      "joker",
+      "stairs",
+      "staircase",
+      "bronx",
+      "shakespeare avenue"
+    ],
+    "mergeRadiusM": 150,
+    "active": true,
+    "matchingAssets": {
+      "still": {
+        "url": "/assets/spots/joker-bronx-stairs/still.jpg",
+        "width": 2000,
+        "height": 1333,
+        "mimeType": "image/jpeg",
+        "sha256": "0d169876997037f010efdaef85a2e9f365952de2d5f3ac9de72c62abedf683eb",
+        "source": "user-upload",
+        "rightsStatus": "not independently verified"
+      },
+      "vantage": {
+        "url": "/assets/spots/joker-bronx-stairs/vantage.jpg",
+        "width": 1280,
+        "height": 1444,
+        "mimeType": "image/jpeg",
+        "sha256": "0c130395d754ff5d03791dde8e1cd925913a4a9c8a31ed06aea46f7cd3598f8a",
+        "title": "Jokerstairstourists.jpg",
+        "sourcePage": "https://commons.wikimedia.org/wiki/File:Jokerstairstourists.jpg",
+        "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/b/be/Jokerstairstourists.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+        "downloadUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/be/Jokerstairstourists.jpg/1280px-Jokerstairstourists.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "author": "Moviebuff1921",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+        "capturedAt": "Taken on 12 October 2019, 17:11:49",
+        "retrievedAt": "2026-09-26",
+        "changes": "Commons-provided thumbnail; no local crop or edit.",
+        "viewpointQuality": "approximate",
+        "viewpointNotes": "Looking up the correct stairs, with tourists and a different lens/framing. Photo dates to 2019."
+      },
+      "prototypeEligible": true,
+      "alignmentValidated": false
+    }
+  },
+  {
+    "spotId": "past-lives-brooklyn-bridge-park",
+    "filmTitle": "Past Lives",
+    "year": 2023,
+    "sceneName": "Waterfront Conversation Near Jane's Carousel",
+    "lat": 40.7054,
+    "lng": -73.9946,
+    "neighbourhood": "DUMBO, Brooklyn",
+    "stillUrl": "/assets/spots/past-lives-brooklyn-bridge-park/still.png",
+    "vantageUrl": "/assets/spots/past-lives-brooklyn-bridge-park/vantage.jpg",
+    "keywords": [
+      "past lives",
+      "brooklyn bridge park",
+      "janes carousel",
+      "jane s carousel",
+      "dumbo"
+    ],
+    "mergeRadiusM": 150,
+    "active": true,
+    "matchingAssets": {
+      "still": {
+        "url": "/assets/spots/past-lives-brooklyn-bridge-park/still.png",
+        "width": 828,
+        "height": 442,
+        "mimeType": "image/png",
+        "sha256": "4501bb940808c550f4c48b1bc44caddf26352d393c335995af6635ee37daa386",
+        "source": "user-upload",
+        "rightsStatus": "not independently verified"
+      },
+      "vantage": {
+        "url": "/assets/spots/past-lives-brooklyn-bridge-park/vantage.jpg",
+        "width": 1280,
+        "height": 427,
+        "mimeType": "image/jpeg",
+        "sha256": "aa55d54e80ab94d62731e1ea6b796b3d18539ce1a1143ff1eb12a94076f6599f",
+        "title": "Brooklyn Bridge and the Lower Manhattan skyline from Pebble Beach, New York.jpg",
+        "sourcePage": "https://commons.wikimedia.org/wiki/File:Brooklyn_Bridge_and_the_Lower_Manhattan_skyline_from_Pebble_Beach,_New_York.jpg",
+        "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/f/f0/Brooklyn_Bridge_and_the_Lower_Manhattan_skyline_from_Pebble_Beach%2C_New_York.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+        "downloadUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f0/Brooklyn_Bridge_and_the_Lower_Manhattan_skyline_from_Pebble_Beach%2C_New_York.jpg/1280px-Brooklyn_Bridge_and_the_Lower_Manhattan_skyline_from_Pebble_Beach%2C_New_York.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "author": "Christian David",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+        "capturedAt": "2026-04-17 06:49:58",
+        "retrievedAt": "2026-09-26",
+        "changes": "Commons-provided thumbnail; no local crop or edit.",
+        "viewpointQuality": "approximate",
+        "viewpointNotes": "Brooklyn Bridge, carousel and skyline visible from Pebble Beach; wide panorama and camera position differ."
+      },
+      "prototypeEligible": true,
+      "alignmentValidated": false
+    }
+  },
+  {
+    "spotId": "devil-wears-prada-fifth-avenue",
+    "filmTitle": "The Devil Wears Prada",
+    "year": 2006,
+    "sceneName": "Dog Walking and Shopping Errands",
+    "lat": 40.7612,
+    "lng": -73.9746,
+    "neighbourhood": "Midtown - Fifth Avenue and 55th Street",
+    "stillUrl": "/assets/spots/devil-wears-prada-fifth-avenue/still.png",
+    "vantageUrl": "/assets/spots/devil-wears-prada-fifth-avenue/vantage.jpg",
+    "keywords": [
+      "devil wears prada",
+      "prada",
+      "andy",
+      "dog",
+      "fifth avenue",
+      "55th street"
+    ],
+    "mergeRadiusM": 150,
+    "active": true,
+    "matchingAssets": {
+      "still": {
+        "url": "/assets/spots/devil-wears-prada-fifth-avenue/still.png",
+        "width": 831,
+        "height": 349,
+        "mimeType": "image/png",
+        "sha256": "cd06b3a65bcb3c226c2f63ff26c1d3de1a840b7f3a9690a8473d104a75cb9586",
+        "source": "user-upload",
+        "rightsStatus": "not independently verified"
+      },
+      "vantage": {
+        "url": "/assets/spots/devil-wears-prada-fifth-avenue/vantage.jpg",
+        "width": 1280,
+        "height": 960,
+        "mimeType": "image/jpeg",
+        "sha256": "bb748673d28e7ead264652af36c1b19ed5ec689378f897abea3e161a67b9305b",
+        "title": "5th Av Nov 2020 53.jpg",
+        "sourcePage": "https://commons.wikimedia.org/wiki/File:5th_Av_Nov_2020_53.jpg",
+        "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/4/4c/5th_Av_Nov_2020_53.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+        "downloadUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4c/5th_Av_Nov_2020_53.jpg/1280px-5th_Av_Nov_2020_53.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "author": "Epicgenius",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+        "capturedAt": "2020-11-14 16:04:08",
+        "retrievedAt": "2026-09-26",
+        "changes": "Commons-provided thumbnail; no local crop or edit.",
+        "viewpointQuality": "context-only",
+        "viewpointNotes": "St Regis visible from Fifth Avenue/54th Street, not the film crosswalk angle. Film corner remains inferred. Not suitable for viewpoint alignment."
+      },
+      "prototypeEligible": false,
+      "alignmentValidated": false
+    }
+  },
+  {
+    "spotId": "john-wick-bethesda-terrace",
+    "filmTitle": "John Wick: Chapter 2",
+    "year": 2017,
+    "sceneName": "Bethesda Terrace Arcade with Dog",
+    "lat": 40.7737,
+    "lng": -73.9709,
+    "neighbourhood": "Central Park",
+    "stillUrl": "/assets/spots/john-wick-bethesda-terrace/still.png",
+    "vantageUrl": "/assets/spots/john-wick-bethesda-terrace/vantage.svg",
+    "keywords": [
+      "john wick",
+      "john wick 2",
+      "bethesda terrace",
+      "central park",
+      "arcade",
+      "dog"
+    ],
+    "mergeRadiusM": 150,
+    "active": true
   }
 ]
