@@ -34,6 +34,9 @@ try {
 // Serve data package assets
 app.use("/assets/spots", express.static(path.join(dataPackageDir, "assets", "spots")));
 
+// Serve test harness
+app.use("/harness", express.static(path.join(__dirname, "..", "harness")));
+
 /** Haversine distance in meters */
 function distanceMeters(
   lat1: number,

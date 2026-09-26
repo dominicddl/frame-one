@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Photo Match Test Harness</title>
+  <style>
+    body { font-family: monospace; max-width: 900px; margin: 20px auto; }
+    input, button { margin: 5px 0; padding: 8px; font-family: monospace; }
+    button { cursor: pointer; background: #4CAF50; color: white; border: none; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .preview { max-width: 400px; margin: 10px 0; border: 1px solid #ccc; }
+    .result { margin-top: 20px; padding: 10px; background: #f5f5f5; }
+    .error { color: red; }
+    .loading { color: #666; }
+    img { max-width: 100%; }
+    .go-next { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Photo Match Test Harness</h1>
+  <p>Test photo retrieval against catalog. Requires OPENAI_API_KEY for vision; GPS fallback without key.</p>
+
+  <h3>1. Select Photo</h3>
+  <input type="file" id="photoInput" accept="image/*">
+  <button onclick="useCatalogStill()">Use tasm2 still (demo)</button>
+  <div id="photoPreview"></div>
+
+  <h3>2. Location & Query</h3>
+  <label>Latitude: <input type="number" id="lat" value="40.7580" step="0.0001"></label><br>
+  <label>Longitude: <input type="number" id="lng" value="-73.9855" step="0.0001"></label><br>
+  <label>Movie Query: <input type="text" id="movieQuery" value="Spider-Man" placeholder="optional"></label><br>
+
+  <h3>3. Match</h3>
+  <button onclick="doMatch()" id="matchBtn">POST /api/match</button>
+
+  <div id="status"></div>
+  <div id="result"></div>
+
+  <script>
+    let photoDataUrl = null;
+
+    document.getElementById('photoInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        photoDataUrl = ev.target.result;
+        document.getElementById('photoPreview').innerHTML = 
+          `<img src="${photoDataUrl}" class="preview" alt="Selected photo">`;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    async function useCatalogStill() {
+      document.getElementById('status').innerHTML = '<p class="loading">Fetching tasm2 still...</p>';
+      try {
+        const resp = await fetch('/assets/spots/tasm2-red-steps/still.png');
+        const blob = await resp.blob();
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          photoDataUrl = e.target.result;
+          document.getElementById('photoPreview').innerHTML = 
+            `<img src="${photoDataUrl}" class="preview" alt="tasm2 still">`;
+          document.getElementById('status').innerHTML = '<p>✓ Loaded tasm2 still</p>';
+        };
+        reader.readAsDataURL(blob);
+      } catch (err) {
+        document.getElementById('status').innerHTML = `<p class="error">Failed to load: ${err.message}</p>`;
+      }
+    }
+
+    async function doMatch() {
+      const lat = parseFloat(document.getElementById('lat').value);
+      const lng = parseFloat(document.getElementById('lng').value);
+      const movieQuery = document.getElementById('movieQuery').value.trim();
+
+      if (!photoDataUrl) {
+        alert('Select a photo first');
+        return;
+      }
+
+      const payload = { lat, lng };
+      if (movieQuery) payload.movieQuery = movieQuery;
+      payload.photoDataUrl = photoDataUrl;
+
+      document.getElementById('matchBtn').disabled = true;
+      document.getElementById('status').innerHTML = '<p class="loading">Matching...</p>';
+      document.getElementById('result').innerHTML = '';
+
+      try {
+        const resp = await fetch('/api/match', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!resp.ok) {
+          const err = await resp.text();
+          throw new Error(`HTTP ${resp.status}: ${err}`);
+        }
+
+        const data = await resp.json();
+        document.getElementById('status').innerHTML = '<p>✓ Match complete</p>';
+        
+        let html = `
+          <h3>Match Result</h3>
+          <p><strong>Spot ID:</strong> ${data.spotId}</p>
+          <p><strong>Film:</strong> ${data.filmTitle} (${data.year})</p>
+          <p><strong>Location:</strong> ${data.lat}, ${data.lng}</p>
+          <p><strong>mergeOk:</strong> ${data.mergeOk}</p>
+          
+          <h4>Still</h4>
+          <img src="${data.stillUrl}" alt="still" style="max-width: 400px;">
+          
+          <h4>Vantage</h4>
+          <img src="${data.vantageUrl}" alt="vantage" style="max-width: 400px;">
+          
+          <h4>goNext (${data.goNext.length})</h4>
+          <div class="go-next">
+        `;
+        
+        data.goNext.forEach(item => {
+          html += `<p>• ${item.spotId}: ${item.label} (${item.lat}, ${item.lng})</p>`;
+        });
+        
+        html += '</div>';
+        document.getElementById('result').innerHTML = html;
+        
+      } catch (err) {
+        document.getElementById('status').innerHTML = `<p class="error">Error: ${err.message}</p>`;
+      } finally {
+        document.getElementById('matchBtn').disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

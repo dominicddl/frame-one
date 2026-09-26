@@ -36,6 +36,11 @@ Run `bash packages/match/proof-matching-catalog.sh` to verify:
 - ✅ Photo matching with real data URL
 - ✅ GPS fallback without key
 
+**UI Test Harness**: `npm run dev:match` then visit **http://localhost:3001/harness/photo-test.html**
+- Upload photo or click "Use tasm2 still (demo)" for zero-friction test
+- Requires OPENAI_API_KEY for vision; GPS fallback without key
+- Shows match result with images and goNext list
+
 ---
 
 ## Architecture
