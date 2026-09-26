@@ -3,7 +3,38 @@
 ## Quick Summary
 
 ✅ **No-key GPS fallback**: PROVEN (all tests passing on VM)  
+✅ **Person B catalog integrated**: 6 candidates with real jpg/png images  
 ⚠️ **Vision retrieval**: READY (requires `OPENAI_API_KEY`)
+
+---
+
+## Person B Integration (Latest)
+
+**Rebased onto master** commit `a37e575` - "Add isolated MongoDB catalog and curated movie image assets"
+
+### Matching Catalog
+
+- **Total spots**: 11 (including placeholder spots for backward compatibility)
+- **Candidate spots**: 6 with real image assets eligible for photo matching
+- **Image formats**: Real jpg/png images (not SVG placeholders)
+- **Catalog manifest**: `/assets/spots/matching-catalog.json`
+
+### What Changed
+
+1. **Server loads matching catalog** on startup: `candidateSpotIds` + `matchingAssets`
+2. **Photo retrieval prefers candidates**: Filters to `candidateSpotIds` when photo present
+3. **Real image support**: Resolves jpg/png/webp from disk via spot's `stillUrl` field
+4. **Backward compatible**: GET /api/spots still serves all 11 spots for Person A's map
+5. **GPS fallback preserved**: Works without API key, uses all spots
+
+### Proof Artifacts
+
+Run `bash packages/match/proof-matching-catalog.sh` to verify:
+- ✅ Matching catalog accessible (6 candidates, 8 in manifest)
+- ✅ Real image assets served (not SVG)
+- ✅ Match API contract valid
+- ✅ Photo matching with real data URL
+- ✅ GPS fallback without key
 
 ---
 
