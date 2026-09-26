@@ -9,13 +9,14 @@
 | Path | Owner | Commits |
 |------|--------|---------|
 | `packages/web/` | **Person A** (frontend) | Only Person A |
-| `packages/api/` | **Person B** (backend) | Only Person B |
+| `packages/data/` | **Person B** (data & assets) | Only Person B |
+| `packages/match/` | **Dominic** (AI matching) | Only Dominic |
 | `packages/shared/` | **Dominic** (glue) | Change only with overviewer |
 | `docs/` | Team + Dominic | Prefer PR; freeze shapes here |
 
-**Branches:** `feat/web-*` (Person A), `feat/api-*` (Person B). Open PRs into `main`. Do not edit the other person’s package.
+**Branches:** `feat/web-*` (Person A), `feat/data-*` (Person B), `feat/match-*` (Dominic). Open PRs into `main`. Do not edit the other person’s package.
 
-Both A and B import types from `@frame-one/shared`. Do not duplicate type definitions in web or api.
+All packages import types from `@frame-one/shared`. Do not duplicate type definitions in web, data, or match.
 
 ---
 
@@ -63,11 +64,11 @@ interface MatchResponse {
 
 ---
 
-## Endpoints (Person B — `:3001`)
+## Endpoints (Dominic — `:3001`)
 
 ### `GET /api/health`
 ```json
-{ "ok": true, "service": "frame-one-api", "spots": 3 }
+{ "ok": true, "service": "frame-one-match", "spots": 3 }
 ```
 
 ### `GET /api/spots`
@@ -107,7 +108,7 @@ Returns curated catalog for map pins (no unlock state yet — client may track u
 - **Always** return a match (no empty / no-match product state).
 - `mergeOk: true` if request GPS is within ~**150 m** of the chosen spot’s lat/lng; else `false` (UI shows vantage).
 
-Static assets: `packages/api/public/assets/spots/<spotId>/still.svg` and `vantage.svg` (served at `/assets/...`).
+**Data assets (Person B in `packages/data/`):** Spot metadata in `data/spots.json`; still/vantage images in `assets/spots/<spotId>/`. Served by match server at `/assets/...`.
 
 ---
 
@@ -123,6 +124,6 @@ Static assets: `packages/api/public/assets/spots/<spotId>/still.svg` and `vantag
 ## How Dominic glues
 
 1. Freeze types in `packages/shared` + this CONTRACT.
-2. Person A ships UI against the JSON shapes above (mock if B is late).
-3. Person B implements endpoints + seed spots; keep response shape stable.
+2. Person A ships UI against the JSON shapes above (mock if needed).
+3. Person B seeds spot data in `packages/data/`; Dominic implements matching + alignment logic in `packages/match/`.
 4. Wire CORS / base URL once; unlock persistence may stay client-side for MVP.
