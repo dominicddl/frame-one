@@ -74,6 +74,31 @@ fi
 echo "✅ Far match passed: matched $SPOT_ID_FAR with mergeOk=false"
 echo ""
 
+# Test 5: goNext ranked by distance from matched spot
+echo "5. POST /api/match near tasm2 - verify goNext is distance-sorted"
+MATCH_GONEXT=$(curl -s -X POST "$MATCH_URL/api/match" \
+  -H "Content-Type: application/json" \
+  -d '{"lat":40.7580,"lng":-73.9855,"movieQuery":"Spider-Man"}')
+echo "$MATCH_GONEXT" | jq .
+MATCHED_ID=$(echo "$MATCH_GONEXT" | jq -r .spotId)
+FIRST_NEXT=$(echo "$MATCH_GONEXT" | jq -r '.goNext[0].spotId')
+SECOND_NEXT=$(echo "$MATCH_GONEXT" | jq -r '.goNext[1].spotId')
+if [[ "$MATCHED_ID" != "tasm2-red-steps" ]]; then
+  echo "❌ FAIL: Expected matched spotId 'tasm2-red-steps', got '$MATCHED_ID'"
+  exit 1
+fi
+if [[ "$FIRST_NEXT" != "night-museum-steps" ]]; then
+  echo "❌ FAIL: Expected first goNext 'night-museum-steps' (3036m), got '$FIRST_NEXT'"
+  exit 1
+fi
+if [[ "$SECOND_NEXT" != "ghostbusters-firehouse" ]]; then
+  echo "❌ FAIL: Expected second goNext 'ghostbusters-firehouse' (4635m), got '$SECOND_NEXT'"
+  exit 1
+fi
+echo "✅ goNext ranking passed: ordered by distance from matched spot"
+echo "   night-museum-steps (3036m) < ghostbusters-firehouse (4635m)"
+echo ""
+
 echo "================================================"
 echo "✅ All match proof tests passed!"
 echo "================================================"

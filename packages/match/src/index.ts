@@ -69,8 +69,11 @@ function buildGoNext(matched: Spot): GoNextItem[] {
       label: `${s.filmTitle} — ${s.neighbourhood}`,
       lat: s.lat,
       lng: s.lng,
+      distance: distanceMeters(matched.lat, matched.lng, s.lat, s.lng),
     }))
-    .slice(0, 3);
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, 3)
+    .map(({ spotId, label, lat, lng }) => ({ spotId, label, lat, lng }));
 }
 
 app.get("/api/health", (_req, res) => {
