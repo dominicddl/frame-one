@@ -3,13 +3,12 @@ export const TRAIL_FILTERS = {
   marvel: {
     id: "marvel",
     label: "Marvel",
-    // TODO: add Captain America GCT spotId when available
-    spotIds: ["tasm2-red-steps"],
+    spotIds: ["tasm2-red-steps", "cap-america-times-square"],
   },
   romcom: {
     id: "romcom",
     label: "Romcom",
-    spotIds: ["friends-benefits-grand-central", "home-alone-radio-city"],
+    spotIds: ["friends-benefits-central-park-mall", "home-alone-radio-city"],
   },
   dark: {
     id: "dark",

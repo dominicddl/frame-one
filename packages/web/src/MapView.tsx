@@ -354,6 +354,14 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
               </div>
             )}
           </>
+        ) : unlocks.length > 0 ? (
+          <div className="sheet-unlocked">
+            <div className="sheet-title">{unlocks.length} stamp{unlocks.length !== 1 ? "s" : ""} collected</div>
+            <p className="sheet-meta">Keep exploring to unlock more film locations.</p>
+            <button type="button" className="primary-button" onClick={onShoot}>
+              Find another
+            </button>
+          </div>
         ) : (
           <div className="sheet-empty">
             <div className="sheet-title">Nothing stamped yet</div>

@@ -554,9 +554,6 @@ export default function App() {
         <button type="button" onClick={() => setStep("recreate")} className="primary-button">
           Recreate this shot
         </button>
-        <button type="button" onClick={saveToMap} className="text-link">
-          Just save it
-        </button>
       </div>
     );
   }

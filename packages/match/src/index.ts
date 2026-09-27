@@ -28,7 +28,9 @@ app.use(express.json({ limit: "10mb" }));
 // Load spot data from @frame-one/data package
 const dataPackageDir = path.join(__dirname, "..", "..", "data");
 const spotsPath = path.join(dataPackageDir, "data", "spots.json");
-const spots: Spot[] = JSON.parse(fs.readFileSync(spotsPath, "utf-8"));
+const allSpots: (Spot & { active?: boolean })[] = JSON.parse(fs.readFileSync(spotsPath, "utf-8"));
+// Filter out inactive spots (active: false) - they should never be matched
+const spots: Spot[] = allSpots.filter((s) => s.active !== false);
 
 // Load matching catalog (Person B's curated image assets)
 const matchingCatalogPath = path.join(dataPackageDir, "assets", "spots", "matching-catalog.json");
