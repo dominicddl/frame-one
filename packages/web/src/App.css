@@ -1098,22 +1098,23 @@ figure {
   filter: saturate(1.1);
 }
 
+/* Plain yellow "?" marker for locked spots */
 .peek-pin {
-  font-family: var(--font-serif);
-  font-style: italic;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  background: var(--fog-stamp);
-  border: 2px solid var(--fog-stamp-line);
-  border-radius: 4px;
-  font-size: 16px;
-  color: var(--fog-stamp-q);
-  box-shadow: 0 2px 8px rgba(26, 26, 24, 0.15);
-  transform: rotate(-3deg);
-  opacity: 0.75;
+  width: 32px;
+  height: 32px;
+  background: #F5C842;
+  border: 2px solid #D4A832;
+  border-radius: 50%;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 18px;
+  font-weight: 600;
+  color: #5C4A1F;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+  animation: pin-pop 400ms var(--ease-pop) both;
 }
 
 .go-chip {
@@ -1135,13 +1136,13 @@ figure {
   animation: chip-pop 380ms var(--ease-pop) both;
 }
 
-/* === GREY OVERLAY (replaces cloud fog) === */
+/* === GREY OVERLAY (locked map fog) === */
 .grey-overlay {
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  background: rgba(128, 128, 128, 0.6);
+  background: rgba(40, 42, 48, 0.82);
 }
 
 /* When unlocks exist, mask shows through as holes */

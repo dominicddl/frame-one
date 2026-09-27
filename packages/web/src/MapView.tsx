@@ -25,6 +25,8 @@ const STAMP_HEIGHT = 0.36;
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 const REVEAL_RADIUS = 180;
 
+// STAMP ART HOOK: Replace this SVG with per-character stamp art when assets land.
+// Current placeholder is a generic clapper icon. Future: swap based on spot.filmTitle or spot.characterId.
 const CLAPPER =
   '<svg width="26" height="26" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8.5" width="14" height="8.5" rx="1.5"/><path d="M3 8.5 4.6 4h12.2L17 8.5"/><path d="M7.4 4 6.6 8.5M11.4 4l-.8 4.5M15.2 4l-.8 4.5" stroke-width="1.4"/></svg>';
 
@@ -166,14 +168,14 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
 
     const unlockedSpots = filteredSpots.filter((s) => unlocks.includes(s.spotId));
 
-    // Simple circle cutout for each unlocked spot (no soft gradient, just hard edge with slight feather)
+    // Circle cutout for each unlocked spot - neighbourhood "lights up"
     const buildHole = (x: number, y: number, z: number, isNew = false) => {
       const R = REVEAL_RADIUS * z;
-      const feather = R * 0.15;
+      const feather = R * 0.12;
       if (isNew) {
-        return `radial-gradient(circle at ${x}px ${y}px, transparent 0%, transparent calc(var(--reveal-r, ${R}px) - ${feather}px), rgba(128,128,128,0.6) var(--reveal-r, ${R}px))`;
+        return `radial-gradient(circle at ${x}px ${y}px, transparent 0%, transparent calc(var(--reveal-r, ${R}px) - ${feather}px), rgba(40,42,48,0.82) var(--reveal-r, ${R}px))`;
       }
-      return `radial-gradient(circle at ${x}px ${y}px, transparent 0%, transparent ${R - feather}px, rgba(128,128,128,0.6) ${R}px)`;
+      return `radial-gradient(circle at ${x}px ${y}px, transparent 0%, transparent ${R - feather}px, rgba(40,42,48,0.82) ${R}px)`;
     };
 
     const updateGreyMask = () => {
