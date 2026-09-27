@@ -29,3 +29,17 @@ export async function getHealth(): Promise<{ ok: boolean }> {
   if (!res.ok) throw new Error(`health failed (${res.status})`);
   return res.json();
 }
+
+export interface GeocodeSuggestion {
+  name: string;
+  lat: number;
+  lng: number;
+}
+
+export async function geocodePlace(query: string): Promise<GeocodeSuggestion[]> {
+  if (!query || query.length < 2) return [];
+  const res = await fetch(`${API_URL}/api/geocode?q=${encodeURIComponent(query)}`);
+  if (!res.ok) return [];
+  const body = (await res.json()) as { results: GeocodeSuggestion[] };
+  return body.results;
+}

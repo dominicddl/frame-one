@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { MatchResponse, SoftMissSuggestion } from "@frame-one/shared";
-import { getSpots, postMatch } from "./api/client";
+import { getSpots, postMatch, geocodePlace, type GeocodeSuggestion } from "./api/client";
 import { useUnlocks } from "./hooks/useUnlocks";
 import MapView, { type SavedStamp } from "./MapView";
 import "./tokens.css";
@@ -100,6 +100,8 @@ export default function App() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [placeQuery, setPlaceQuery] = useState("");
   const [placeError, setPlaceError] = useState<string | null>(null);
+  const [geocodedPlaces, setGeocodedPlaces] = useState<GeocodeSuggestion[]>([]);
+  const [isGeocoding, setIsGeocoding] = useState(false);
   const [suggestions, setSuggestions] = useState<SoftMissSuggestion[]>([]);
   const [spotsCache, setSpotsCache] = useState<{ spotId: string; lat: number; lng: number; neighbourhood: string }[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -228,6 +230,7 @@ export default function App() {
   function toggleEditPlace() {
     setEditingPlace(!editingPlace);
     setPlaceError(null);
+    setGeocodedPlaces([]);
     if (places.length) return;
     getSpots()
       .then((spots) => {
@@ -237,10 +240,32 @@ export default function App() {
       .catch(() => setPlaceError("Couldn't load places. Try again."));
   }
 
+  // Debounced geocoding for typed place queries
+  useEffect(() => {
+    if (!editingPlace || placeQuery.trim().length < 2) {
+      setGeocodedPlaces([]);
+      return;
+    }
+    setIsGeocoding(true);
+    const timer = setTimeout(() => {
+      geocodePlace(placeQuery.trim())
+        .then((results) => {
+          setGeocodedPlaces(results);
+          setIsGeocoding(false);
+        })
+        .catch(() => {
+          setGeocodedPlaces([]);
+          setIsGeocoding(false);
+        });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [placeQuery, editingPlace]);
+
   function pickPlace(next: Place) {
     setPlace(next);
     setEditingPlace(false);
     setPlaceQuery("");
+    setGeocodedPlaces([]);
   }
 
   function locateWithGps() {
@@ -428,27 +453,51 @@ export default function App() {
               value={placeQuery}
               onChange={(e) => setPlaceQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
-              placeholder="Search a neighbourhood"
+              placeholder="Search a place (Times Square, Radio City...)"
               className="place-search"
-              aria-label="Search a neighbourhood"
+              aria-label="Search a place in NYC"
               autoFocus
             />
             <div className="place-options">
               <button type="button" className="place-option gps" onClick={locateWithGps}>
                 Use my GPS
               </button>
-              {places
-                .filter((p) => p.name.toLowerCase().includes(placeQuery.trim().toLowerCase()))
-                .map((p) => (
-                  <button
-                    key={p.name}
-                    type="button"
-                    className={`place-option${p.name === place.name ? " selected" : ""}`}
-                    onClick={() => pickPlace(p)}
-                  >
-                    {p.name}
-                  </button>
-                ))}
+              {isGeocoding && placeQuery.trim().length >= 2 && (
+                <span className="place-hint">Searching...</span>
+              )}
+              {geocodedPlaces.length > 0 && (
+                <>
+                  <span className="place-section-label">Map results</span>
+                  {geocodedPlaces.map((p, i) => (
+                    <button
+                      key={`geo-${i}-${p.lat}-${p.lng}`}
+                      type="button"
+                      className="place-option geocoded"
+                      onClick={() => pickPlace(p)}
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                </>
+              )}
+              {placeQuery.trim().length < 2 && geocodedPlaces.length === 0 && (
+                <>
+                  <span className="place-section-label">Quick picks</span>
+                  {places.map((p) => (
+                    <button
+                      key={p.name}
+                      type="button"
+                      className={`place-option${p.name === place.name ? " selected" : ""}`}
+                      onClick={() => pickPlace(p)}
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                </>
+              )}
+              {placeQuery.trim().length >= 2 && geocodedPlaces.length === 0 && !isGeocoding && (
+                <span className="place-hint">No places found. Try another search.</span>
+              )}
             </div>
             {placeError && <p className="form-error">{placeError}</p>}
           </div>
@@ -661,13 +710,13 @@ export default function App() {
 
         {match.mergeOk ? (
           <p className="merge-copy">
-            Your shot, with the film frame on top.
+            Line up with the scene. Move until edges match.
           </p>
         ) : (
           <div className="vantage-hint">
             <img src={match.vantageUrl} alt="Where the film camera stood" />
             <p>
-              Not quite the angle. Stand where this was shot, then{" "}
+              Line up with the scene. Stand where the camera was, then{" "}
               <button type="button" className="inline-link" onClick={retake}>
                 retake
               </button>

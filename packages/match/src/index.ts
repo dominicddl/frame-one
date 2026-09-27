@@ -317,6 +317,85 @@ app.post("/api/match", async (req, res) => {
   res.json(response);
 });
 
+// Simple in-memory cache for geocode results (TTL 5 minutes)
+const geocodeCache = new Map<string, { results: GeocodeSuggestion[]; expires: number }>();
+const GEOCODE_CACHE_TTL = 5 * 60 * 1000;
+
+interface GeocodeSuggestion {
+  name: string;
+  lat: number;
+  lng: number;
+}
+
+app.get("/api/geocode", async (req, res) => {
+  const query = String(req.query.q || "").trim();
+  if (!query || query.length < 2) {
+    res.json({ results: [] });
+    return;
+  }
+
+  const cacheKey = query.toLowerCase();
+  const cached = geocodeCache.get(cacheKey);
+  if (cached && cached.expires > Date.now()) {
+    res.json({ results: cached.results });
+    return;
+  }
+
+  try {
+    // Nominatim with NYC bias (viewbox around Manhattan, bounded)
+    const params = new URLSearchParams({
+      q: query,
+      format: "json",
+      addressdetails: "1",
+      limit: "6",
+      viewbox: "-74.05,40.9,-73.85,40.65",
+      bounded: "1",
+      countrycodes: "us",
+    });
+
+    const nominatimUrl = `https://nominatim.openstreetmap.org/search?${params}`;
+    const response = await fetch(nominatimUrl, {
+      headers: {
+        "User-Agent": "FrameOne/1.0 (demo film location app)",
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      console.log(`[geocode] Nominatim error: ${response.status}`);
+      res.json({ results: [] });
+      return;
+    }
+
+    const data = (await response.json()) as Array<{
+      display_name: string;
+      lat: string;
+      lon: string;
+      address?: { road?: string; neighbourhood?: string; suburb?: string; city?: string };
+    }>;
+
+    const results: GeocodeSuggestion[] = data.map((item) => {
+      const addr = item.address || {};
+      const shortName =
+        addr.road ||
+        addr.neighbourhood ||
+        addr.suburb ||
+        item.display_name.split(",")[0];
+      return {
+        name: shortName,
+        lat: parseFloat(item.lat),
+        lng: parseFloat(item.lon),
+      };
+    });
+
+    geocodeCache.set(cacheKey, { results, expires: Date.now() + GEOCODE_CACHE_TTL });
+    res.json({ results });
+  } catch (err) {
+    console.log(`[geocode] Error: ${err}`);
+    res.json({ results: [] });
+  }
+});
+
 app.listen(PORT, () => {
   const visionStatus = hasVisionApiKey()
     ? `✓ OpenAI API key found (model: ${getVisionModelInfo()})`
