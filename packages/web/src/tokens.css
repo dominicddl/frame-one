@@ -1,4 +1,4 @@
-/* Design tokens from Frame One handoff v2 */
+/* Design tokens from Frame One handoff v2 — warm orange rebrand */
 :root {
   /* Colors - Light mode */
   --ground: #F7F3EA;
@@ -10,16 +10,20 @@
   --ink: #22262A;
   --muted: #5A6068;
   --faint: #6B6559;
-  --title: #1B4B6B;
-  --action: #1C4C6B;
+  
+  /* Primary brand — warm orange (no bold blue) */
+  --title: #c45a1a;
+  --action: #e87a2a;
   --on-action: #FFFFFF;
-  --action-text: #1C4C6B;
-  --panel: #96C0D9;
-  --on-panel: #1B3240;
-  --progress-next: #C3DAE8;
+  --action-text: #c45a1a;
+  
+  /* Neutral panels */
+  --panel: #E9DFD0;
+  --on-panel: #3D3529;
+  --progress-next: #F0E6D8;
   --dim: rgba(20, 26, 32, 0.62);
 
-  /* Map colors */
+  /* Map colors — warm neutrals */
   --map-water: #96C0D9;
   --map-land: #E3DACB;
   --map-coast: #D6CBB8;
@@ -28,13 +32,13 @@
   --map-bridge: #C7BCA8;
   --map-label-water: #274E66;
   --map-label-land: #5E584D;
-  --fog: #F2F7FA;
-  --fog-shade: #DFEAF1;
+  --fog: #F5F0E8;
+  --fog-shade: #E8DFD2;
   --stamp-paper: #FFFBF2;
-  --stamp-ink: #1D4B6A;
-  --fog-stamp: #EEF3F6;
-  --fog-stamp-line: #A9B6C0;
-  --fog-stamp-q: #5E6A74;
+  --stamp-ink: #c45a1a;
+  --fog-stamp: #F5EDE2;
+  --fog-stamp-line: #C4B8A6;
+  --fog-stamp-q: #8A7A62;
 
   /* Trail colors */
   --trail-marvel: #A32D22;
@@ -46,9 +50,14 @@
   --trail-eighties: #A6741C;
   --trail-eighties-tint: #F5EAD3;
 
-  /* Typography */
-  --font-serif: 'Instrument Serif', Georgia, serif;
-  --font-sans: 'Space Grotesk', system-ui, sans-serif;
+  /* Typography — system fonts for hackathon */
+  --font-serif: ui-serif, Georgia, 'Times New Roman', serif;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Accent — warm orange for hackathon branding */
+  --accent: #e87a2a;
+  --accent-glow: rgba(232, 122, 42, 0.45);
+  --accent-dark: #c45a1a;
 
   /* Easing */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -73,12 +82,13 @@
   --ink: #EDE7DA;
   --muted: #A3A9AF;
   --faint: #9AA0A7;
-  --title: #FFFFFF;
-  --action: #2E6E96;
-  --action-text: #96C0D9;
-  --panel: #1E3742;
-  --on-panel: #BCD8E6;
-  --progress-next: #35566A;
+  /* Warm orange in dark mode */
+  --title: #F5A66A;
+  --action: #e87a2a;
+  --action-text: #F5A66A;
+  --panel: #2A2420;
+  --on-panel: #E8D4C0;
+  --progress-next: #3D322A;
   --dim: rgba(0, 0, 0, 0.7);
   --map-water: #1B3B4A;
   --map-land: #262C2E;
@@ -91,6 +101,7 @@
   --fog: #C9D5DE;
   --fog-shade: #7F93A3;
   --stamp-paper: #EFE8D8;
+  --stamp-ink: #e87a2a;
   --fog-stamp: #DCE4EA;
   --fog-stamp-line: #6D7E8C;
   --fog-stamp-q: #44505A;
@@ -104,6 +115,8 @@
   --trail-eighties-tint: #2E2717;
   --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.66), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   --shadow-sheet: 0 -12px 36px rgba(0, 0, 0, 0.66), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --accent: #e87a2a;
+  --accent-dark: #c45a1a;
   color-scheme: dark;
 }
 

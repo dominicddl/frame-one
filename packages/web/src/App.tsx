@@ -1,11 +1,12 @@
-import { useState, useRef, useEffect } from "react";
-import type { MatchResponse } from "@frame-one/shared";
+import { useState, useRef, useEffect, useCallback } from "react";
+import type { MatchResponse, SoftMissSuggestion } from "@frame-one/shared";
 import { getSpots, postMatch } from "./api/client";
+import { useUnlocks } from "./hooks/useUnlocks";
 import MapView, { type SavedStamp } from "./MapView";
 import "./tokens.css";
 import "./App.css";
 
-type Step = "capture" | "questions" | "scanning" | "result" | "recreate" | "map";
+type Step = "capture" | "questions" | "scanning" | "result" | "soft-miss" | "recreate" | "map";
 
 interface Place {
   name: string;
@@ -76,6 +77,15 @@ function RetakeIcon() {
   );
 }
 
+function ShareIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 3v10M6.5 6.5 10 3l3.5 3.5" />
+      <path d="M3.5 12.5v2a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-2" />
+    </svg>
+  );
+}
+
 export default function App() {
   const [step, setStep] = useState<Step>("capture");
   const [movieQuery, setMovieQuery] = useState("");
@@ -90,8 +100,20 @@ export default function App() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [placeQuery, setPlaceQuery] = useState("");
   const [placeError, setPlaceError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<SoftMissSuggestion[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Use the useUnlocks hook as the single source of truth
+  const { unlocks, unlock, seedDemo } = useUnlocks();
+
+  // Seed demo unlocks if ?demo=1 is in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("demo") === "1") {
+      seedDemo();
+    }
+  }, [seedDemo]);
 
   useEffect(() => {
     if (cameraStream && videoRef.current) {
@@ -109,18 +131,51 @@ export default function App() {
       .then(([result]) => {
         if (cancelled) return;
         setMatch(result);
-        setStep("result");
+        
+        // Soft-miss ONLY when matchConfidence is low (wrong/weak film match)
+        // Do NOT soft-miss on medium/high just because suggestions exist
+        if (result.matchConfidence === "low") {
+          // Show soft-miss "Did you mean...?" with curated suggestions
+          setSuggestions(result.suggestions || []);
+          setStep("soft-miss");
+        } else {
+          // Good match (high/medium confidence) — proceed to result screen
+          // Even if mergeOk is false (GPS distance), we show result then recreate
+          setStep("result");
+        }
       })
       .catch((e) => {
         if (cancelled) return;
         console.error("Match failed:", e);
-        setError("Couldn't reach the matcher. Try again.");
-        setStep("questions");
+        // On API error, try to fetch nearby spots for soft-miss fallback
+        getSpots()
+          .then((spots) => {
+            const nearby: SoftMissSuggestion[] = spots
+              .slice(0, 3)
+              .map((s) => ({
+                spotId: s.spotId,
+                filmTitle: "Unknown",
+                neighbourhood: s.neighbourhood,
+                distanceM: 0,
+                reason: "nearby" as const,
+              }));
+            if (nearby.length > 0) {
+              setSuggestions(nearby);
+              setStep("soft-miss");
+            } else {
+              setError("Couldn't reach the matcher. Try again.");
+              setStep("questions");
+            }
+          })
+          .catch(() => {
+            setError("Couldn't reach the matcher. Try again.");
+            setStep("questions");
+          });
       });
     return () => {
       cancelled = true;
     };
-  }, [step]);
+  }, [step, place.lat, place.lng, movieQuery, photoDataUrl]);
 
   function stopCamera() {
     cameraStream?.getTracks().forEach((track) => track.stop());
@@ -200,10 +255,67 @@ export default function App() {
 
   function saveToMap() {
     if (!match) return;
+    // Add unlock via the hook (keeps state in sync)
+    unlock(match.spotId);
     setSaved({ match, photo: photoDataUrl, placeName: place.name });
     setJustUnlocked(true);
     setStep("map");
   }
+
+  // Download merged overlay image
+  const downloadOverlay = useCallback(async () => {
+    if (!match || !photoDataUrl) return;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Load user photo
+    const userImg = new Image();
+    userImg.crossOrigin = "anonymous";
+    await new Promise<void>((resolve) => {
+      userImg.onload = () => resolve();
+      userImg.src = photoDataUrl;
+    });
+
+    // Set canvas size to user photo
+    canvas.width = userImg.width;
+    canvas.height = userImg.height;
+    ctx.drawImage(userImg, 0, 0);
+
+    // Load film still
+    const filmImg = new Image();
+    filmImg.crossOrigin = "anonymous";
+    await new Promise<void>((resolve, reject) => {
+      filmImg.onload = () => resolve();
+      filmImg.onerror = () => reject();
+      filmImg.src = match.stillUrl;
+    }).catch(() => {});
+
+    if (filmImg.complete && filmImg.naturalWidth > 0) {
+      // Draw film still as inset (70% width, centered)
+      const insetWidth = canvas.width * 0.7;
+      const insetHeight = (filmImg.height / filmImg.width) * insetWidth;
+      const insetX = (canvas.width - insetWidth) / 2;
+      const insetY = (canvas.height - insetHeight) / 2;
+
+      // White border
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(insetX - 4, insetY - 4, insetWidth + 8, insetHeight + 8);
+      ctx.drawImage(filmImg, insetX, insetY, insetWidth, insetHeight);
+
+      // Add film title watermark
+      ctx.font = "bold 16px system-ui, sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.textAlign = "center";
+      ctx.fillText(`${match.filmTitle} (${match.year})`, canvas.width / 2, canvas.height - 20);
+    }
+
+    // Download
+    const link = document.createElement("a");
+    link.download = `frame-one-${match.spotId}.jpg`;
+    link.href = canvas.toDataURL("image/jpeg", 0.92);
+    link.click();
+  }, [match, photoDataUrl]);
 
   function openMap() {
     stopCamera();
@@ -295,7 +407,7 @@ export default function App() {
 
         <div className="location-card">
           <svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <circle cx="10" cy="10" r="9" fill="#1C4C6B" />
+            <circle cx="10" cy="10" r="9" fill="var(--action, #e87a2a)" />
             <path d="m5.6 10.3 2.9 2.8 5.9-6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <div className="location-info">
@@ -383,7 +495,7 @@ export default function App() {
         <div className="scanning-steps">
           <div className="step done">
             <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <circle cx="10" cy="10" r="9" fill="#1C4C6B" />
+              <circle cx="10" cy="10" r="9" fill="var(--action, #e87a2a)" />
               <path d="m5.6 10.3 2.9 2.8 5.9-6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <span>Scenes filmed near you</span>
@@ -447,6 +559,68 @@ export default function App() {
     );
   }
 
+  // Navigate to a suggested spot (soft-miss row click)
+  function goToSuggestion(suggestion: SoftMissSuggestion) {
+    // Set movie query to the suggested film and retake flow
+    setMovieQuery(suggestion.filmTitle);
+    setPhotoDataUrl(null);
+    setStep("capture");
+  }
+
+  // Soft-miss: ONLY when matchConfidence === "low" (wrong/weak film match)
+  // Shows "Did you mean...?" with curated alternatives
+  if (step === "soft-miss") {
+    return (
+      <div className="screen soft-miss">
+        <button type="button" onClick={retake} className="back-button" aria-label="Back to the camera">
+          <BackIcon />
+        </button>
+
+        <h1 className="soft-miss-title">Did you mean…?</h1>
+        <p className="soft-miss-subtitle">
+          We couldn't match that film here. Try one of these nearby spots instead.
+        </p>
+
+        {photoDataUrl && <img src={photoDataUrl} alt="Your photo" className="soft-miss-photo" />}
+
+        {suggestions.length > 0 && (
+          <div className="nearby-section">
+            <div className="micro-label">Movie spots nearby</div>
+            <div className="nearby-list">
+              {suggestions.map((suggestion) => (
+                <button
+                  key={suggestion.spotId}
+                  type="button"
+                  className="nearby-item"
+                  onClick={() => goToSuggestion(suggestion)}
+                >
+                  <span className="nearby-icon">?</span>
+                  <span className="nearby-text">
+                    <span className="nearby-film">{suggestion.filmTitle}</span>
+                    <span className="nearby-area">
+                      {suggestion.neighbourhood}
+                      {suggestion.distanceM > 0 && ` · ${Math.round(suggestion.distanceM)}m`}
+                    </span>
+                  </span>
+                  <span className="nearby-arrow">→</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="spacer" />
+
+        <button type="button" onClick={retake} className="primary-button">
+          Try again
+        </button>
+        <button type="button" onClick={openMap} className="text-link">
+          Go to map
+        </button>
+      </div>
+    );
+  }
+
   if (step === "recreate" && match) {
     return (
       <div className="screen recreate">
@@ -481,9 +655,15 @@ export default function App() {
           </div>
         )}
 
-        <button type="button" onClick={saveToMap} className="primary-button">
-          Save on map
-        </button>
+        <div className="recreate-actions">
+          <button type="button" onClick={saveToMap} className="primary-button">
+            Stamp &amp; save
+          </button>
+          <button type="button" onClick={downloadOverlay} className="secondary-button">
+            <ShareIcon />
+            Download
+          </button>
+        </div>
       </div>
     );
   }
@@ -494,6 +674,7 @@ export default function App() {
         saved={saved}
         unlocking={justUnlocked}
         home={place}
+        unlocks={unlocks}
         onShoot={startOver}
         dock={<Dock className="dock-floating" active="map" onShoot={startOver} onMap={() => {}} />}
       />

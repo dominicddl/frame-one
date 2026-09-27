@@ -13,6 +13,8 @@ interface MapViewProps {
   saved: SavedStamp | null;
   unlocking: boolean;
   home: { lat: number; lng: number };
+  /** Full array of unlocked spotIds for fog/stamps — Jacelyn owns rendering */
+  unlocks: string[];
   onShoot: () => void;
   dock: ReactNode;
 }
@@ -141,7 +143,7 @@ function Clouds() {
 function StampBadge() {
   return (
     <svg width="168" height="168" viewBox="0 0 188 188" fill="none" aria-hidden="true">
-      <circle cx="94" cy="94" r="92" fill="#1C4C6B" />
+      <circle cx="94" cy="94" r="92" fill="var(--action, #e87a2a)" />
       <circle cx="94" cy="94" r="80" stroke="#FFFFFF" strokeOpacity="0.35" strokeWidth="2" />
       <g fill="#FFFFFF" fillOpacity="0.9">
         <circle cx="94" cy="28" r="8" />
@@ -153,13 +155,14 @@ function StampBadge() {
         <circle cx="47" cy="141" r="8" />
         <circle cx="141" cy="141" r="8" />
       </g>
-      <circle cx="94" cy="94" r="44" fill="#123A52" />
+      <circle cx="94" cy="94" r="44" fill="var(--accent-dark, #c45a1a)" />
       <circle cx="94" cy="94" r="35" stroke="#FFFFFF" strokeOpacity="0.3" strokeDasharray="3 4" />
     </svg>
   );
 }
 
-export default function MapView({ saved, unlocking, home, onShoot, dock }: MapViewProps) {
+export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock }: MapViewProps) {
+  const unlockCount = unlocks.length;
   const mapRef = useRef<HTMLDivElement>(null);
   const cloudsRef = useRef<HTMLDivElement>(null);
   const focus = saved ? { lat: saved.match.lat, lng: saved.match.lng } : home;
@@ -215,7 +218,7 @@ export default function MapView({ saved, unlocking, home, onShoot, dock }: MapVi
 
       <div className="map-header">
         <span className="map-title">New York</span>
-        <span className="map-count">{saved ? "1 stamp" : "No stamps yet"}</span>
+        <span className="map-count">{unlockCount > 0 ? `${unlockCount} stamp${unlockCount !== 1 ? "s" : ""}` : "No stamps yet"}</span>
       </div>
       <a className="osm-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
         © OpenStreetMap contributors · OpenFreeMap
