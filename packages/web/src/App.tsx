@@ -424,8 +424,8 @@ export default function App() {
               <div className="frame-label">Yours</div>
             </div>
             <div className="frame-col">
-              <div className="frame-well placeholder">
-                <span>[ still ]</span>
+              <div className="frame-well">
+                {match.stillUrl && <img src={match.stillUrl} alt="Film still" />}
               </div>
               <div className="frame-label">Film</div>
             </div>
