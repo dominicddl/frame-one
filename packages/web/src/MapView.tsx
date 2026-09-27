@@ -13,7 +13,8 @@ interface MapViewProps {
   saved: SavedStamp | null;
   unlocking: boolean;
   home: { lat: number; lng: number };
-  unlockCount?: number;
+  /** Full array of unlocked spotIds for fog/stamps — Jacelyn owns rendering */
+  unlocks: string[];
   onShoot: () => void;
   dock: ReactNode;
 }
@@ -160,7 +161,8 @@ function StampBadge() {
   );
 }
 
-export default function MapView({ saved, unlocking, home, unlockCount = 0, onShoot, dock }: MapViewProps) {
+export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock }: MapViewProps) {
+  const unlockCount = unlocks.length;
   const mapRef = useRef<HTMLDivElement>(null);
   const cloudsRef = useRef<HTMLDivElement>(null);
   const focus = saved ? { lat: saved.match.lat, lng: saved.match.lng } : home;

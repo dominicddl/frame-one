@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import type { MatchResponse, GoNextItem } from "@frame-one/shared";
-import { addUnlock, seedDemoUnlocks, getUnlocks } from "@frame-one/shared";
+import type { MatchResponse, SoftMissSuggestion } from "@frame-one/shared";
 import { getSpots, postMatch } from "./api/client";
+import { useUnlocks } from "./hooks/useUnlocks";
 import MapView, { type SavedStamp } from "./MapView";
 import "./tokens.css";
 import "./App.css";
@@ -100,20 +100,20 @@ export default function App() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [placeQuery, setPlaceQuery] = useState("");
   const [placeError, setPlaceError] = useState<string | null>(null);
-  const [nearbySpots, setNearbySpots] = useState<GoNextItem[]>([]);
-  const [unlockCount, setUnlockCount] = useState(() => getUnlocks().length);
+  const [suggestions, setSuggestions] = useState<SoftMissSuggestion[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const mergeCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Use the useUnlocks hook as the single source of truth
+  const { unlocks, unlock, seedDemo } = useUnlocks();
 
   // Seed demo unlocks if ?demo=1 is in URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("demo") === "1") {
-      seedDemoUnlocks();
-      setUnlockCount(getUnlocks().length);
+      seedDemo();
     }
-  }, []);
+  }, [seedDemo]);
 
   useEffect(() => {
     if (cameraStream && videoRef.current) {
@@ -131,25 +131,39 @@ export default function App() {
       .then(([result]) => {
         if (cancelled) return;
         setMatch(result);
-        // If mergeOk is false, this is a weak match — show soft-miss with nearby spots
-        if (!result.mergeOk && result.goNext.length > 0) {
-          setNearbySpots(result.goNext);
+        
+        // Soft-miss: when matchConfidence is low OR suggestions are present
+        // This is for wrong/weak film match — NOT for GPS distance issues
+        const isLowConfidence = result.matchConfidence === "low";
+        const hasSuggestions = result.suggestions && result.suggestions.length > 0;
+        
+        if (isLowConfidence || hasSuggestions) {
+          // Show soft-miss "Did you mean...?" with curated suggestions
+          setSuggestions(result.suggestions || []);
           setStep("soft-miss");
         } else {
+          // Good match (high/medium confidence) — proceed to result screen
+          // Even if mergeOk is false (GPS distance), we show result then recreate
           setStep("result");
         }
       })
       .catch((e) => {
         if (cancelled) return;
         console.error("Match failed:", e);
-        // On API error, try to fetch nearby spots for soft-miss
+        // On API error, try to fetch nearby spots for soft-miss fallback
         getSpots()
           .then((spots) => {
-            const nearby = spots
-              .slice(0, 4)
-              .map((s) => ({ spotId: s.spotId, label: s.neighbourhood, lat: s.lat, lng: s.lng }));
+            const nearby: SoftMissSuggestion[] = spots
+              .slice(0, 3)
+              .map((s) => ({
+                spotId: s.spotId,
+                filmTitle: "Unknown",
+                neighbourhood: s.neighbourhood,
+                distanceM: 0,
+                reason: "nearby" as const,
+              }));
             if (nearby.length > 0) {
-              setNearbySpots(nearby);
+              setSuggestions(nearby);
               setStep("soft-miss");
             } else {
               setError("Couldn't reach the matcher. Try again.");
@@ -244,9 +258,8 @@ export default function App() {
 
   function saveToMap() {
     if (!match) return;
-    // Add unlock to localStorage
-    addUnlock(match.spotId);
-    setUnlockCount(getUnlocks().length);
+    // Add unlock via the hook (keeps state in sync)
+    unlock(match.spotId);
     setSaved({ match, photo: photoDataUrl, placeName: place.name });
     setJustUnlocked(true);
     setStep("map");
@@ -549,7 +562,16 @@ export default function App() {
     );
   }
 
-  // Soft-miss: when match fails or is weak, show nearby/same-film spots
+  // Navigate to a suggested spot (soft-miss row click)
+  function goToSuggestion(suggestion: SoftMissSuggestion) {
+    // Set movie query to the suggested film and retake flow
+    setMovieQuery(suggestion.filmTitle);
+    setPhotoDataUrl(null);
+    setStep("capture");
+  }
+
+  // Soft-miss: when matchConfidence is low or suggestions present
+  // Shows "Did you mean...?" with curated alternatives
   if (step === "soft-miss") {
     return (
       <div className="screen soft-miss">
@@ -557,29 +579,35 @@ export default function App() {
           <BackIcon />
         </button>
 
-        <h1 className="soft-miss-title">Not quite a match</h1>
+        <h1 className="soft-miss-title">Did you mean…?</h1>
         <p className="soft-miss-subtitle">
-          We couldn't lock this one, but there are other movie spots nearby.
+          We couldn't match that film here. Try one of these nearby spots instead.
         </p>
 
         {photoDataUrl && <img src={photoDataUrl} alt="Your photo" className="soft-miss-photo" />}
 
-        {nearbySpots.length > 0 && (
+        {suggestions.length > 0 && (
           <div className="nearby-section">
-            <div className="micro-label">Try one of these instead</div>
+            <div className="micro-label">Movie spots nearby</div>
             <div className="nearby-list">
-              {nearbySpots.map((spot) => {
-                const [film, area] = spot.label.split(" — ");
-                return (
-                  <div key={spot.spotId} className="nearby-item">
-                    <span className="nearby-icon">?</span>
-                    <span className="nearby-text">
-                      <span className="nearby-film">{film}</span>
-                      {area && <span className="nearby-area">{area}</span>}
+              {suggestions.map((suggestion) => (
+                <button
+                  key={suggestion.spotId}
+                  type="button"
+                  className="nearby-item"
+                  onClick={() => goToSuggestion(suggestion)}
+                >
+                  <span className="nearby-icon">?</span>
+                  <span className="nearby-text">
+                    <span className="nearby-film">{suggestion.filmTitle}</span>
+                    <span className="nearby-area">
+                      {suggestion.neighbourhood}
+                      {suggestion.distanceM > 0 && ` · ${Math.round(suggestion.distanceM)}m`}
                     </span>
-                  </div>
-                );
-              })}
+                  </span>
+                  <span className="nearby-arrow">→</span>
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -649,7 +677,7 @@ export default function App() {
         saved={saved}
         unlocking={justUnlocked}
         home={place}
-        unlockCount={unlockCount}
+        unlocks={unlocks}
         onShoot={startOver}
         dock={<Dock className="dock-floating" active="map" onShoot={startOver} onMap={() => {}} />}
       />
