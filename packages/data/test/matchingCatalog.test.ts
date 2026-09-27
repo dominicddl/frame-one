@@ -5,8 +5,8 @@ import { buildMatchingCatalog } from "../src/matchingCatalog";
 
 test("matching handoff excludes placeholders and context-only photos from candidates", () => {
   const manifest = buildMatchingCatalog(readSeedSpots());
-  assert.equal(manifest.spots.length, 7);
-  assert.equal(manifest.candidateSpotIds.length, 5);
+  assert.equal(manifest.spots.length, 9);
+  assert.equal(manifest.candidateSpotIds.length, 7);
   assert.ok(!manifest.candidateSpotIds.includes("home-alone-battery-park"));
   assert.ok(!manifest.candidateSpotIds.includes("devil-wears-prada-fifth-avenue"));
   assert.ok(!manifest.spots.some((spot) => spot.spotId === "ghostbusters-firehouse"));
