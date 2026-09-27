@@ -730,38 +730,56 @@
 
 /* === MERGE SCREEN === */
 .merge {
-  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  min-height: 844px;
 }
 
-.merge-title {
-  margin: 0 0 16px;
+.merge-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.back-button-simple {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  font-size: 20px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.merge-title-compact {
+  margin: 0;
   font-family: var(--font-serif);
   font-style: italic;
   font-weight: 400;
-  font-size: 36px;
-  line-height: 40px;
+  font-size: 28px;
+  line-height: 32px;
   letter-spacing: 0.014em;
   color: var(--title);
 }
 
-.merge-description {
-  margin: 0 0 32px;
-  font-size: 16px;
-  line-height: 25px;
-  color: var(--muted);
-}
-
-.merge-preview {
+.merge-preview-large {
   position: relative;
-  width: 100%;
-  height: 400px;
-  margin-bottom: 32px;
-  border-radius: 26px;
+  flex-grow: 1;
+  min-height: 500px;
+  margin-bottom: 20px;
+  border-radius: 32px;
   overflow: hidden;
-  box-shadow: 0 10px 26px rgba(26, 26, 24, 0.16);
+  box-shadow: 0 18px 44px rgba(26, 26, 24, 0.18);
 }
 
-.merge-preview img {
+.merge-base {
   position: absolute;
   top: 0;
   left: 0;
@@ -770,8 +788,48 @@
   object-fit: cover;
 }
 
+.merge-overlay-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
 .merge-overlay {
-  z-index: 1;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  opacity: 0.7;
+  animation: fade 600ms ease-out 300ms both;
+}
+
+.merge-info {
+  margin-bottom: 20px;
+}
+
+.merge-chip {
+  display: inline-block;
+  padding: 6px 12px;
+  background: var(--panel);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--on-panel);
+  margin-bottom: 12px;
+}
+
+.merge-description {
+  margin: 0;
+  font-size: 15px;
+  line-height: 24px;
+  color: var(--muted);
 }
 
 /* === UNLOCKED SCREEN === */

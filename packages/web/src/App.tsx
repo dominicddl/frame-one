@@ -20,6 +20,20 @@ export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  async function loadDemoPhoto() {
+    try {
+      const response = await fetch("/demo/user-photo.jpg");
+      const blob = await response.blob();
+      const reader = new FileReader();
+      reader.onload = () => {
+        setPhotoDataUrl(reader.result as string);
+      };
+      reader.readAsDataURL(blob);
+    } catch (err) {
+      console.error("Failed to load demo photo:", err);
+    }
+  }
+
   useEffect(() => {
     if (cameraStream && videoRef.current) {
       videoRef.current.srcObject = cameraStream;
@@ -115,7 +129,9 @@ export default function App() {
               <button
                 type="button"
                 className="last-capture"
-                aria-label="Your last capture"
+                onClick={loadDemoPhoto}
+                aria-label="Load demo photo"
+                title="Load Times Square demo photo"
               />
               <button
                 type="button"
@@ -129,15 +145,25 @@ export default function App() {
                   <path d="M7.4 5.5 8.7 3.2h2.6l1.3 2.3" stroke="#FFFFFF" strokeWidth="1.8" strokeLinejoin="round" />
                 </svg>
               </button>
-              <button type="button" className="switch-camera" aria-label="Switch camera">
+              <button
+                type="button"
+                className="switch-camera"
+                onClick={() => fileInputRef.current?.click()}
+                aria-label="Upload photo"
+              >
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <path d="M3 8a7 7 0 0 1 11.6-3.3L17 7" stroke="#22262A" strokeWidth="1.5" strokeLinecap="round" />
-                  <path d="M17 3.5V7h-3.5" stroke="#22262A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M17 12a7 7 0 0 1-11.6 3.3L3 13" stroke="#22262A" strokeWidth="1.5" strokeLinecap="round" />
-                  <path d="M3 16.5V13h3.5" stroke="#22262A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <rect x="3" y="6" width="14" height="11" rx="2" stroke="#22262A" strokeWidth="1.5" />
+                  <path d="M7 10l3 3 3-3M10 13V7" stroke="#22262A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
             </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              style={{ display: "none" }}
+            />
           </div>
         )}
 
@@ -445,22 +471,32 @@ export default function App() {
   if (step === "merge" && match) {
     return (
       <div className="screen merge">
-        <h1 className="merge-title">Merge Demo</h1>
-        <p className="merge-description">
-          In this demo, the film still ({match.filmTitle}) would overlay onto your photo here.
-          The composite image IS the recreate.
-        </p>
-        <div className="merge-preview">
-          {photoDataUrl && <img src={photoDataUrl} alt="Base photo" />}
-          {match.stillUrl && (
+        <div className="merge-header">
+          <button type="button" onClick={() => setStep("result")} className="back-button-simple">
+            ←
+          </button>
+          <h1 className="merge-title-compact">Recreate</h1>
+        </div>
+
+        <div className="merge-preview-large">
+          {photoDataUrl && <img src={photoDataUrl} alt="Your photo" className="merge-base" />}
+          <div className="merge-overlay-container">
             <img
-              src={match.stillUrl}
+              src="/demo/tasm2-still.jpg"
               alt="Film still overlay"
               className="merge-overlay"
-              style={{ opacity: 0.5 }}
             />
-          )}
+          </div>
         </div>
+
+        <div className="merge-info">
+          <div className="merge-chip">Overlay mode</div>
+          <p className="merge-description">
+            The film still from <strong>{match.filmTitle}</strong> is composited onto your photo.
+            This merged image IS your recreate.
+          </p>
+        </div>
+
         <button type="button" onClick={() => setStep("unlocked")} className="primary-button">
           Claim the stamp
         </button>
