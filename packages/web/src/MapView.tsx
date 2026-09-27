@@ -290,13 +290,17 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
     };
   }, [saved, focus.lat, focus.lng, filteredSpots, unlocks, next.length]);
 
-  const unlockedSpots = spots.filter((s) => unlocks.includes(s.spotId));
-  // Only +1 if saved spot isn't already counted in unlocks[]
+  // Use unlocks.length directly (same source as sheet) - don't rely on spots fetch
+  // Only +1 if saved spot isn't already counted in unlocks[] (during unlock animation)
   const savedAlreadyCounted = saved && unlocks.includes(saved.match.spotId);
-  const stampCount = saved && !savedAlreadyCounted ? unlockedSpots.length + 1 : unlockedSpots.length;
+  const stampCount = saved && !savedAlreadyCounted ? unlocks.length + 1 : unlocks.length;
+  
+  // For fog holes, still need to filter spots that are actually in catalog
+  const unlockedSpots = spots.filter((s) => unlocks.includes(s.spotId));
+  const hasHoles = unlocks.length > 0 || saved;
 
   return (
-    <div className={`screen map-screen${unlocking ? " unlocking" : ""}${unlockedSpots.length > 0 || saved ? " has-holes" : ""}`}>
+    <div className={`screen map-screen${unlocking ? " unlocking" : ""}${hasHoles ? " has-holes" : ""}`}>
       <div ref={mapRef} className="map-canvas" />
       <div ref={cloudsRef} className="cloud-layer">
         <Clouds />
