@@ -341,7 +341,7 @@ export default function App() {
         )}
 
         <h1 className="question-title">Know what was filmed here?</h1>
-        <p className="question-subtitle">Name the film and we'll line your frame up with the scene.</p>
+        <p className="question-subtitle">Name the film. We'll find the scene.</p>
 
         <label htmlFor="movie-input" className="micro-label">
           The film
@@ -413,13 +413,6 @@ export default function App() {
           <BackIcon />
         </button>
 
-        <div className="chip guessed">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="m3 8.4 3.2 3.1L13 4.8" stroke="#1C4C6B" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Guessed it
-        </div>
-
         <h1 className="verdict">Exact match.</h1>
 
         <div className="frame-row">
@@ -430,6 +423,10 @@ export default function App() {
           <figure className="frame-col">
             <div className="frame-well">
               <img src={match.stillUrl} alt={`Still from ${match.filmTitle}`} />
+              <video autoPlay muted loop playsInline aria-hidden="true">
+                <source src={`/assets/spots/${match.spotId}/clip.mp4`} type="video/mp4" />
+                <source src={`/assets/spots/${match.spotId}/clip.webm`} type="video/webm" />
+              </video>
             </div>
             <figcaption className="frame-label">Film</figcaption>
           </figure>
@@ -437,15 +434,7 @@ export default function App() {
 
         <div className="film-card">
           <h2 className="film-title">{match.filmTitle}</h2>
-          <div className="film-meta">{match.year}</div>
-          <div className="film-media">
-            <img src={match.stillUrl} alt="" />
-            <video autoPlay muted loop playsInline aria-hidden="true">
-              <source src={`/assets/spots/${match.spotId}/clip.mp4`} type="video/mp4" />
-              <source src={`/assets/spots/${match.spotId}/clip.webm`} type="video/webm" />
-            </video>
-          </div>
-          <p className="film-description">Filmed on the block you're standing on.</p>
+          <div className="film-meta">{match.year} · Filmed right where you're standing.</div>
         </div>
 
         <button type="button" onClick={() => setStep("recreate")} className="primary-button">
@@ -477,7 +466,7 @@ export default function App() {
 
         {match.mergeOk ? (
           <p className="merge-copy">
-            Your photo with the <strong>{match.filmTitle}</strong> frame laid on top. This is your recreate.
+            Your shot, with the film frame on top.
           </p>
         ) : (
           <div className="vantage-hint">
@@ -504,6 +493,7 @@ export default function App() {
       <MapView
         saved={saved}
         unlocking={justUnlocked}
+        home={place}
         onShoot={startOver}
         dock={<Dock className="dock-floating" active="map" onShoot={startOver} onMap={() => {}} />}
       />

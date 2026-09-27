@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import type { MatchResponse } from "@frame-one/shared";
 
 export interface SavedStamp {
@@ -10,102 +12,99 @@ export interface SavedStamp {
 interface MapViewProps {
   saved: SavedStamp | null;
   unlocking: boolean;
+  home: { lat: number; lng: number };
   onShoot: () => void;
   dock: ReactNode;
 }
 
-const ZOOM = 3.4;
-const HOLE_RADIUS = 42;
-const CENTER = { x: 195, y: 300 };
-const TIMES_SQUARE = { lat: 40.758, lng: -73.9855, x: 174, y: 334 };
+const ZOOM = 14;
+const STAMP_HEIGHT = 0.36;
 
-// Affine fit of the handoff map's hand-placed pins to their real coordinates.
-function project(lat: number, lng: number) {
-  const dLat = lat - TIMES_SQUARE.lat;
-  const dLng = lng - TIMES_SQUARE.lng;
-  return {
-    x: TIMES_SQUARE.x - 577.7 * dLat + 1988.4 * dLng,
-    y: TIMES_SQUARE.y - 3219.7 * dLat - 941.8 * dLng,
-  };
+const CLAPPER =
+  '<svg width="26" height="26" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8.5" width="14" height="8.5" rx="1.5"/><path d="M3 8.5 4.6 4h12.2L17 8.5"/><path d="M7.4 4 6.6 8.5M11.4 4l-.8 4.5M15.2 4l-.8 4.5" stroke-width="1.4"/></svg>';
+
+const stampIcon = L.divIcon({
+  className: "map-marker",
+  html: `<div class="stamp-pin"><span class="stamp-ripple"></span><span class="stamp-face">${CLAPPER}</span></div>`,
+  iconSize: [48, 48],
+});
+
+function nextIcon(i: number) {
+  return L.divIcon({
+    className: "map-marker",
+    html: `<div class="next-pin" style="animation-delay: calc(var(--reveal) + ${600 + i * 90}ms)">?</div>`,
+    iconSize: [34, 34],
+  });
 }
 
-const MANHATTAN =
-  "M214 118 L196 126 L180 190 L168 258 L156 326 L146 394 L138 462 L142 516 L158 548 L174 540 L184 492 L194 420 L204 348 L216 276 L228 204 L234 146 Z";
+type Cloud = { x: number; y: number; s: number; kind: "cumulus" | "stratus"; layer: "back" | "mid" | "front" };
 
-const LAND = [
-  "M0 0 L92 0 L84 96 L98 176 L86 256 L100 330 L82 402 L92 470 L64 530 L72 596 L38 660 L46 726 L0 790 Z",
-  "M230 0 L336 0 L344 58 L332 110 L302 132 L268 116 L238 84 L226 44 Z",
-  "M288 168 L390 152 L390 690 L322 718 L262 690 L214 638 L196 580 L212 520 L230 452 L246 384 L258 300 L270 226 Z",
-  MANHATTAN,
-  "M60 636 L128 616 L166 664 L160 744 L108 784 L52 752 L34 686 Z",
-  "M242 342 L248 356 L246 430 L240 442 L236 428 L238 356 Z",
+const CLOUDS: Cloud[] = [
+  ...[40, 170, 300, 430, 560, 690, 820].map((y, i): Cloud => ({ x: i % 2 ? 250 : 120, y, s: 1.3, kind: "stratus", layer: "back" })),
+  ...(
+    [
+      [-40, -20, 1.5],
+      [170, 30, 1.3],
+      [-20, 150, 1.4],
+      [190, 200, 1.5],
+      [40, 290, 1.2],
+      [-60, 380, 1.5],
+      [180, 410, 1.4],
+      [20, 520, 1.3],
+      [200, 570, 1.2],
+      [-40, 660, 1.5],
+      [160, 720, 1.4],
+    ] as const
+  ).map(([x, y, s]): Cloud => ({ x, y, s, kind: "cumulus", layer: "mid" })),
+  ...(
+    [
+      [100, 100, 0.8],
+      [250, 340, 0.7],
+      [60, 470, 0.8],
+      [260, 640, 0.7],
+      [120, 790, 0.8],
+    ] as const
+  ).map(([x, y, s]): Cloud => ({ x, y, s, kind: "cumulus", layer: "front" })),
 ];
 
-const BRIDGES = [
-  "M196 152 L98 168",
-  "M178 372 L258 356",
-  "M166 440 L236 452",
-  "M158 484 L214 506",
-  "M154 502 L206 528",
-  "M166 700 L228 672",
-  "M322 124 L344 168",
-];
-
-const AVENUES = [-21, -14, -7, 0, 7, 14, 21];
-const STREETS = Array.from({ length: 46 }, (_, i) => 170 + i * 8);
-
-const RAYS = [
-  "M53.8 24 L65.3 24",
-  "M45 45 L53.2 53.2",
-  "M24 53.8 L24 65.3",
-  "M3 45 L-5.2 53.2",
-  "M-5.8 24 L-17.3 24",
-  "M3 3 L-5.2 -5.2",
-  "M24 -5.8 L24 -17.3",
-  "M45 3 L53.2 -5.2",
-];
-
-function rnd(i: number) {
-  const s = Math.sin(i * 127.1 + 311.7) * 43758.5453;
-  return s - Math.floor(s);
-}
-
-const BLOBS = Array.from({ length: 90 }, (_, i) => ({
-  cx: rnd(i + 1) * 390,
-  cy: rnd(i + 5001) * 844,
-  r: 26 + rnd(i + 9001) * 48,
-}));
-
-function StampPin() {
+function Clouds() {
   return (
-    <g transform="rotate(-4)">
-      <g transform="translate(-24 -24)">
-        <g className="stamp-rays">
-          {RAYS.map((d) => (
-            <path key={d} d={d} />
-          ))}
+    <svg className="cloud-svg" viewBox="0 0 390 844" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <linearGradient id="puff" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#FFFFFF" />
+          <stop offset="0.55" stopColor="#F3F6F9" />
+          <stop offset="1" stopColor="#C9D5DF" />
+        </linearGradient>
+        <filter id="cloud-soft" x="-20%" y="-30%" width="140%" height="160%">
+          <feGaussianBlur stdDeviation="1.6" />
+        </filter>
+        <filter id="cloud-blur" x="-30%" y="-60%" width="160%" height="220%">
+          <feGaussianBlur stdDeviation="7" />
+        </filter>
+        <symbol id="cumulus" overflow="visible">
+          <ellipse cx="100" cy="84" rx="94" ry="22" fill="url(#puff)" />
+          <circle cx="50" cy="70" r="30" fill="url(#puff)" />
+          <circle cx="86" cy="50" r="40" fill="url(#puff)" />
+          <circle cx="130" cy="56" r="34" fill="url(#puff)" />
+          <circle cx="164" cy="72" r="24" fill="url(#puff)" />
+        </symbol>
+        <symbol id="stratus" overflow="visible">
+          <ellipse cx="0" cy="0" rx="200" ry="38" fill="url(#puff)" />
+          <ellipse cx="-70" cy="-14" rx="110" ry="30" fill="url(#puff)" />
+          <ellipse cx="80" cy="-10" rx="120" ry="28" fill="url(#puff)" />
+        </symbol>
+      </defs>
+      <rect className="cloud-haze" width="390" height="844" />
+      {CLOUDS.map((c, i) => (
+        <g key={i} transform={`translate(${c.x} ${c.y}) scale(${c.s})`}>
+          <g className={`cloud cloud-${c.layer} from-${i % 2 ? "right" : "left"}`} style={{ "--i": i } as CSSProperties}>
+            {c.kind === "cumulus" && <use href="#cumulus" x="6" y="16" className="cloud-shadow" filter="url(#cloud-blur)" />}
+            <use href={`#${c.kind}`} filter={c.kind === "stratus" ? "url(#cloud-blur)" : "url(#cloud-soft)"} />
+          </g>
         </g>
-      </g>
-      <rect x="-24" y="-24" width="48" height="48" rx="5" className="pin-paper stamp-glow" />
-      <rect x="-19.5" y="-19.5" width="39" height="39" rx="2" className="stamp-ink" />
-      <g transform="translate(-14 -14) scale(1.4)" className="stamp-icon">
-        <rect x="3" y="8.5" width="14" height="8.5" rx="1.5" />
-        <path d="M3 8.5 4.6 4h12.2L17 8.5" />
-        <path d="M7.4 4 6.6 8.5M11.4 4l-.8 4.5M15.2 4l-.8 4.5" />
-      </g>
-    </g>
-  );
-}
-
-function NextPin({ fogged }: { fogged: boolean }) {
-  return (
-    <g transform="rotate(-5)" className={fogged ? "pin-fogged" : "pin-next"}>
-      <rect x="-18" y="-18" width="36" height="36" rx="5" className="pin-paper" />
-      <rect x="-12.5" y="-12.5" width="25" height="25" rx="2" className="pin-inner" />
-      <text y="6.5" textAnchor="middle" className="pin-q">
-        ?
-      </text>
-    </g>
+      ))}
+    </svg>
   );
 }
 
@@ -130,120 +129,55 @@ function StampBadge() {
   );
 }
 
-export default function MapView({ saved, unlocking, onShoot, dock }: MapViewProps) {
-  const spot = saved ? project(saved.match.lat, saved.match.lng) : TIMES_SQUARE;
-  const tx = CENTER.x - spot.x * ZOOM;
-  const ty = CENTER.y - spot.y * ZOOM;
+export default function MapView({ saved, unlocking, home, onShoot, dock }: MapViewProps) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const cloudsRef = useRef<HTMLDivElement>(null);
+  const focus = saved ? { lat: saved.match.lat, lng: saved.match.lng } : home;
   const next = saved?.match.goNext ?? [];
 
+  useEffect(() => {
+    const el = mapRef.current;
+    if (!el) return;
+    const map = L.map(el, { zoomControl: false, attributionControl: false, minZoom: 11, maxZoom: 18 });
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+    map.setView([focus.lat, focus.lng], ZOOM, { animate: false });
+    map.panBy([0, el.clientHeight * (0.5 - STAMP_HEIGHT)], { animate: false });
+
+    if (saved) {
+      L.marker([focus.lat, focus.lng], { icon: stampIcon, interactive: false, keyboard: false }).addTo(map);
+      saved.match.goNext.forEach((item, i) =>
+        L.marker([item.lat, item.lng], { icon: nextIcon(i), interactive: false, keyboard: false, title: item.label }).addTo(map),
+      );
+    }
+
+    const trackHole = () => {
+      const p = map.latLngToContainerPoint([focus.lat, focus.lng]);
+      const style = cloudsRef.current?.style;
+      style?.setProperty("--hx", `${p.x}px`);
+      style?.setProperty("--hy", `${p.y}px`);
+      style?.setProperty("--hz", String(2 ** (map.getZoom() - ZOOM)));
+    };
+    trackHole();
+    map.on("move zoom", trackHole);
+    return () => {
+      map.remove();
+    };
+  }, [saved, focus.lat, focus.lng]);
+
   return (
-    <div className={`screen map-screen${unlocking ? " unlocking" : ""}`}>
-      <svg className="map-svg" viewBox="0 0 390 844" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Map of New York">
-        <defs>
-          <clipPath id="clip-manhattan">
-            <path d={MANHATTAN} />
-          </clipPath>
-          <clipPath id="clip-land">
-            <path d={LAND.join(" ")} />
-          </clipPath>
-          <radialGradient id="hole-gradient">
-            <stop offset="0" stopColor="#000" />
-            <stop offset="0.62" stopColor="#000" />
-            <stop offset="1" stopColor="#fff" />
-          </radialGradient>
-          <radialGradient id="blob-light">
-            <stop offset="0" stopColor="#F2F7FA" stopOpacity="0.55" />
-            <stop offset="1" stopColor="#F2F7FA" stopOpacity="0" />
-          </radialGradient>
-          <radialGradient id="blob-shade">
-            <stop offset="0" stopColor="#DFEAF1" stopOpacity="0.35" />
-            <stop offset="1" stopColor="#DFEAF1" stopOpacity="0" />
-          </radialGradient>
-          <mask id="fog-mask" maskUnits="userSpaceOnUse" x="-50" y="-50" width="490" height="944">
-            <rect x="-50" y="-50" width="490" height="944" fill="#fff" />
-            {saved && <circle className="fog-hole" cx={spot.x} cy={spot.y} r={HOLE_RADIUS} fill="url(#hole-gradient)" />}
-          </mask>
-        </defs>
-
-        <g className="map-base" transform={`translate(${tx} ${ty}) scale(${ZOOM})`}>
-          <rect className="map-water" x="-50" y="-50" width="490" height="944" />
-          <g className="map-land">
-            {LAND.map((d) => (
-              <path key={d} d={d} />
-            ))}
-            <ellipse cx="176" cy="574" rx="9" ry="6" />
-          </g>
-          <g className="map-park">
-            <rect x="186" y="196" width="26" height="94" rx="3" transform="rotate(-11 199 243)" />
-            <path d="M296 196 L332 188 L346 232 L316 246 Z" />
-            <path d="M254 626 L292 616 L302 650 L264 662 Z" />
-          </g>
-          <g className="map-streets" clipPath="url(#clip-manhattan)">
-            {STREETS.map((y) => (
-              <path key={y} d={`M120 ${y} L260 ${y - 22}`} />
-            ))}
-          </g>
-          <g className="map-avenues" clipPath="url(#clip-manhattan)">
-            {AVENUES.map((dx) => (
-              <path key={dx} d={`M${226 + dx} 120 L${150 + dx} 552`} />
-            ))}
-          </g>
-          <g className="map-bridges">
-            {BRIDGES.map((d) => (
-              <path key={d} d={d} />
-            ))}
-          </g>
-          <g className="map-label-water">
-            <text x="121" y="296">HUDSON</text>
-            <text x="122" y="300.5">RIVER</text>
-            <text x="211" y="290">EAST</text>
-            <text x="211" y="294.5">RIVER</text>
-          </g>
-          <text className="map-label-land" transform="translate(160 372) rotate(-81.5)">
-            MANHATTAN
-          </text>
-
-          <g className="map-fog" clipPath="url(#clip-land)" mask="url(#fog-mask)">
-            <rect className="fog-base" x="0" y="0" width="390" height="844" />
-            <g className="wisp-a">
-              {BLOBS.filter((_, i) => i % 2 === 0).map((b, i) => (
-                <circle key={i} {...b} fill={i % 3 ? "url(#blob-light)" : "url(#blob-shade)"} />
-              ))}
-            </g>
-            <g className="wisp-b">
-              {BLOBS.filter((_, i) => i % 2 === 1).map((b, i) => (
-                <circle key={i} {...b} fill={i % 3 ? "url(#blob-light)" : "url(#blob-shade)"} />
-              ))}
-            </g>
-          </g>
-        </g>
-
-        {next.map((item, i) => {
-          const p = project(item.lat, item.lng);
-          const fogged = Math.hypot(p.x - spot.x, p.y - spot.y) > HOLE_RADIUS * 0.92;
-          return (
-            <g key={item.spotId} transform={`translate(${p.x * ZOOM + tx} ${p.y * ZOOM + ty})`}>
-              <g className="pin-pop" style={{ animationDelay: `calc(var(--beat) + ${1000 + i * 90}ms)` }}>
-                <NextPin fogged={fogged} />
-              </g>
-            </g>
-          );
-        })}
-
-        {saved && (
-          <g transform={`translate(${CENTER.x} ${CENTER.y})`}>
-            {unlocking && <circle className="stamp-ripple" r="24" />}
-            <g className="stamp-drop">
-              <StampPin />
-            </g>
-          </g>
-        )}
-      </svg>
+    <div className={`screen map-screen${unlocking ? " unlocking" : ""}${saved ? " has-hole" : ""}`}>
+      <div ref={mapRef} className="map-canvas" />
+      <div ref={cloudsRef} className="cloud-layer">
+        <Clouds />
+      </div>
 
       <div className="map-header">
         <span className="map-title">New York</span>
         <span className="map-count">{saved ? "1 stamp" : "No stamps yet"}</span>
       </div>
+      <a className="osm-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
+        © OpenStreetMap contributors
+      </a>
 
       {saved && unlocking && (
         <div className="unlock-stage" role="status">
@@ -278,11 +212,6 @@ export default function MapView({ saved, unlocking, onShoot, dock }: MapViewProp
                 </div>
               </div>
             </div>
-            <div className="sheet-chips">
-              <span>Stamp 1</span>
-              <span>Fog cleared</span>
-              {next.length > 0 && <span>{next.length} scenes nearby</span>}
-            </div>
             {next.length > 0 && (
               <div className="go-next">
                 <div className="micro-label">Where to go next</div>
@@ -304,7 +233,7 @@ export default function MapView({ saved, unlocking, onShoot, dock }: MapViewProp
         ) : (
           <div className="sheet-empty">
             <div className="sheet-title">Nothing stamped yet</div>
-            <p className="sheet-meta">Shoot a place you've seen in a film to lift the fog.</p>
+            <p className="sheet-meta">Shoot a place you've seen in a film to clear the clouds.</p>
             <button type="button" className="primary-button" onClick={onShoot}>
               Start shooting
             </button>
