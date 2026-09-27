@@ -1,18 +1,23 @@
 export const TRAIL_FILTERS = {
   all: { id: "all", label: "All", spotIds: null },
-  marvel: {
-    id: "marvel",
-    label: "Marvel",
+  superhero: {
+    id: "superhero",
+    label: "Superhero",
     spotIds: ["tasm2-red-steps", "cap-america-times-square"],
   },
-  romcom: {
-    id: "romcom",
-    label: "Romcom",
-    spotIds: ["friends-benefits-central-park-mall", "home-alone-radio-city"],
+  romance: {
+    id: "romance",
+    label: "Romance",
+    spotIds: ["friends-benefits-central-park-mall"],
   },
-  dark: {
-    id: "dark",
-    label: "Dark",
+  comedy: {
+    id: "comedy",
+    label: "Comedy",
+    spotIds: ["home-alone-radio-city"],
+  },
+  thriller: {
+    id: "thriller",
+    label: "Thriller",
     spotIds: ["joker-bronx-stairs"],
   },
 } satisfies Record<string, { id: string; label: string; spotIds: string[] | null }>;

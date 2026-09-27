@@ -251,13 +251,11 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
         {(Object.keys(TRAIL_FILTERS) as TrailFilterId[]).map((key) => {
           const config = TRAIL_FILTERS[key];
           const isActive = trailFilter === key;
-          const colorVar = key === "marvel" ? "--trail-marvel" : key === "romcom" ? "--trail-romcom" : key === "dark" ? "--trail-monsters" : null;
           return (
             <button
               key={key}
               type="button"
               className={`trail-chip${isActive ? " active" : ""}`}
-              style={colorVar ? ({ "--trail-color": `var(${colorVar})` } as CSSProperties) : undefined}
               onClick={() => setTrailFilter(key)}
             >
               {config.label}

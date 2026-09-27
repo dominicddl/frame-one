@@ -462,7 +462,7 @@ figure {
 .form-error {
   margin: 8px 0 0;
   font-size: 14px;
-  color: var(--trail-marvel);
+  color: #c62828;
 }
 
 /* === SCANNING === */
