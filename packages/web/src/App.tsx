@@ -1,24 +1,19 @@
-import { useState, useRef, useEffect, type CSSProperties } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { MatchResponse } from "@frame-one/shared";
 import { postMatch } from "./api/client";
+import "./tokens.css";
+import "./App.css";
 
-type Step =
-  | "capture"
-  | "context"
-  | "matching"
-  | "merge"
-  | "vantage"
-  | "map";
+type Step = "capture" | "questions" | "scanning" | "result" | "merge" | "unlocked" | "map";
 
 const DEMO_LAT = 40.758;
 const DEMO_LNG = -73.9855;
+const DEMO_LOCATION = "Times Square, Manhattan";
 
 export default function App() {
   const [step, setStep] = useState<Step>("capture");
-  const [movieQuery, setMovieQuery] = useState("Spider-Man");
+  const [movieQuery, setMovieQuery] = useState("");
   const [match, setMatch] = useState<MatchResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [showCamera, setShowCamera] = useState(false);
@@ -31,6 +26,15 @@ export default function App() {
     }
   }, [cameraStream]);
 
+  useEffect(() => {
+    if (step === "scanning") {
+      const timer = setTimeout(() => {
+        runMatch();
+      }, 3600);
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
+
   async function startCamera() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -41,7 +45,6 @@ export default function App() {
       setShowCamera(true);
     } catch (err) {
       console.error("Camera access failed:", err);
-      setError("Camera access denied. Please use upload instead.");
     }
   }
 
@@ -76,725 +79,506 @@ export default function App() {
     reader.readAsDataURL(file);
   }
 
-  function clearPhoto() {
-    setPhotoDataUrl(null);
-    setError(null);
-  }
-
   async function runMatch() {
-    setLoading(true);
-    setError(null);
-    setStep("matching");
     try {
       const result = await postMatch({
         lat: DEMO_LAT,
         lng: DEMO_LNG,
-        movieQuery,
+        movieQuery: movieQuery || undefined,
         photoDataUrl: photoDataUrl || undefined,
       });
       setMatch(result);
-      setStep(result.mergeOk ? "merge" : "vantage");
+      setStep("result");
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setStep("context");
-    } finally {
-      setLoading(false);
+      console.error("Match failed:", e);
+      setStep("questions");
     }
   }
 
-  return (
-    <div>
-      <header style={{ marginBottom: "1.5rem" }}>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: "2rem",
-            letterSpacing: "0.05em",
-            fontFamily: "var(--font-display)",
-            fontWeight: 500,
-          }}
-        >
-          FRAME ONE
-        </h1>
-        <p
-          style={{
-            margin: "0.25rem 0 0",
-            opacity: 0.7,
-            fontSize: "0.9rem",
-            fontFamily: "var(--font-ui)",
-          }}
-        >
-          Movie Map — cinephile location capture
-        </p>
-      </header>
-
-      <nav
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "0.35rem",
-          marginBottom: "1.25rem",
-          fontSize: "0.7rem",
-        }}
-      >
-        {(
-          [
-            "capture",
-            "context",
-            "matching",
-            "merge",
-            "vantage",
-            "map",
-          ] as Step[]
-        ).map((s) => (
-          <span
-            key={s}
-            style={{
-              padding: "0.2rem 0.5rem",
-              borderRadius: "var(--radius-pill)",
-              background:
-                step === s ? "var(--ember-orange)" : "var(--warm-surface)",
-              color: step === s ? "var(--ink)" : "var(--ink)",
-              opacity: step === s ? 1 : 0.5,
-              border: "1px solid var(--warm-border)",
-            }}
-          >
-            {s}
-          </span>
-        ))}
-      </nav>
-
-      {step === "capture" && (
-        <section>
-          <h2
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "1.5rem",
-              marginTop: 0,
-            }}
-          >
-            1. Capture
-          </h2>
-
-          {!photoDataUrl && !showCamera && (
-            <>
-              <p style={{ opacity: 0.8, marginBottom: "1rem" }}>
-                Take a photo of your location or upload an existing image.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                <button
-                  type="button"
-                  onClick={startCamera}
-                  style={btnStyle}
-                >
-                  📷 Use Camera
-                </button>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  style={{
-                    ...btnStyle,
-                    background: "var(--warm-surface)",
-                    color: "var(--ink)",
-                    border: "2px solid var(--warm-border)",
-                  }}
-                >
-                  📁 Upload Image
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  style={{ display: "none" }}
-                />
-              </div>
-            </>
-          )}
-
-          {showCamera && (
-            <div>
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                style={{
-                  width: "100%",
-                  borderRadius: "var(--radius-lg)",
-                  border: "2px solid var(--warm-border)",
-                  marginBottom: "0.75rem",
-                }}
-              />
-              <div style={{ display: "flex", gap: "0.75rem" }}>
-                <button
-                  type="button"
-                  onClick={capturePhoto}
-                  style={{ ...btnStyle, flex: 1 }}
-                >
-                  Capture
-                </button>
-                <button
-                  type="button"
-                  onClick={stopCamera}
-                  style={{
-                    ...btnStyle,
-                    flex: 1,
-                    background: "var(--warm-surface)",
-                    color: "var(--ink)",
-                    border: "2px solid var(--warm-border)",
-                  }}
-                >
-                  Cancel
-                </button>
+  if (step === "capture") {
+    return (
+      <div className="screen">
+        {!photoDataUrl && !showCamera && (
+          <div className="capture-empty">
+            <div className="capture-header">
+              <div className="location-pill">
+                <span className="dot blink"></span>
+                <span className="location-name">{DEMO_LOCATION}</span>
+                <span className="location-count">14</span>
               </div>
             </div>
-          )}
-
-          {photoDataUrl && (
-            <div>
-              <p style={{ opacity: 0.8, marginBottom: "0.75rem" }}>
-                Preview:
-              </p>
-              <img
-                src={photoDataUrl}
-                alt="Captured"
-                style={{
-                  width: "100%",
-                  borderRadius: "var(--radius-lg)",
-                  border: "2px solid var(--warm-border)",
-                  marginBottom: "0.75rem",
-                }}
-              />
-              <div style={{ display: "flex", gap: "0.75rem" }}>
-                <button
-                  type="button"
-                  onClick={() => setStep("context")}
-                  style={{ ...btnStyle, flex: 1 }}
-                >
-                  Continue
-                </button>
-                <button
-                  type="button"
-                  onClick={clearPhoto}
-                  style={{
-                    ...btnStyle,
-                    flex: 1,
-                    background: "var(--warm-surface)",
-                    color: "var(--ink)",
-                    border: "2px solid var(--warm-border)",
-                  }}
-                >
-                  Retake
-                </button>
-              </div>
+            <div className="capture-well">
+              <div className="capture-placeholder"></div>
             </div>
-          )}
-
-          {error && (
-            <p
-              style={{
-                color: "var(--ember-orange)",
-                marginTop: "0.75rem",
-                padding: "0.75rem",
-                background: "var(--warm-surface)",
-                borderRadius: "var(--radius-sm)",
-                border: "1px solid var(--warm-border)",
-              }}
-            >
-              {error}
-            </p>
-          )}
-        </section>
-      )}
-
-      {step === "context" && (
-        <section>
-          <h2
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "1.5rem",
-              marginTop: 0,
-            }}
-          >
-            2. Context
-          </h2>
-          <p style={{ opacity: 0.8, marginBottom: "1rem" }}>
-            GPS pin: {DEMO_LAT}, {DEMO_LNG} (Times Square demo)
-          </p>
-          {photoDataUrl && (
-            <div style={{ marginBottom: "1rem" }}>
-              <p
-                style={{
-                  fontSize: "0.85rem",
-                  opacity: 0.7,
-                  marginBottom: "0.5rem",
-                }}
+            <p className="instruction">Point at somewhere you've seen in a film</p>
+            <div className="shutter-row">
+              <button
+                type="button"
+                className="last-capture"
+                aria-label="Your last capture"
+              />
+              <button
+                type="button"
+                className="shutter"
+                onClick={showCamera ? capturePhoto : startCamera}
+                aria-label="Take the photo"
               >
-                Your photo:
-              </p>
-              <img
-                src={photoDataUrl}
-                alt="Captured"
-                style={{
-                  width: "100%",
-                  maxHeight: "200px",
-                  objectFit: "cover",
-                  borderRadius: "var(--radius-sm)",
-                  border: "1px solid var(--warm-border)",
-                }}
-              />
+                <svg width="30" height="30" viewBox="0 0 20 20" fill="none">
+                  <rect x="2" y="5.5" width="16" height="11.5" rx="3" stroke="#FFFFFF" strokeWidth="1.8" />
+                  <circle cx="10" cy="11.2" r="3.4" stroke="#FFFFFF" strokeWidth="1.8" />
+                  <path d="M7.4 5.5 8.7 3.2h2.6l1.3 2.3" stroke="#FFFFFF" strokeWidth="1.8" strokeLinejoin="round" />
+                </svg>
+              </button>
+              <button type="button" className="switch-camera" aria-label="Switch camera">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M3 8a7 7 0 0 1 11.6-3.3L17 7" stroke="#22262A" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M17 3.5V7h-3.5" stroke="#22262A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M17 12a7 7 0 0 1-11.6 3.3L3 13" stroke="#22262A" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M3 16.5V13h3.5" stroke="#22262A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
             </div>
-          )}
-          <label style={{ display: "block", marginBottom: "0.75rem" }}>
-            <span style={{ fontSize: "0.9rem", opacity: 0.8 }}>
-              Movie / vibe
-            </span>
+          </div>
+        )}
+
+        {showCamera && (
+          <div className="capture-camera">
+            <div className="capture-header">
+              <div className="location-pill">
+                <span className="dot blink"></span>
+                <span className="location-name">{DEMO_LOCATION}</span>
+                <span className="location-count">14</span>
+              </div>
+            </div>
+            <div className="camera-well">
+              <video ref={videoRef} autoPlay playsInline muted className="camera-video" />
+              <div className="camera-brackets">
+                <div className="bracket tl"></div>
+                <div className="bracket tr"></div>
+                <div className="bracket bl"></div>
+                <div className="bracket br"></div>
+              </div>
+            </div>
+            <p className="instruction">Point at somewhere you've seen in a film</p>
+            <div className="shutter-row">
+              <button type="button" className="last-capture" aria-label="Your last capture" />
+              <button type="button" className="shutter" onClick={capturePhoto} aria-label="Take the photo">
+                <svg width="30" height="30" viewBox="0 0 20 20" fill="none">
+                  <rect x="2" y="5.5" width="16" height="11.5" rx="3" stroke="#FFFFFF" strokeWidth="1.8" />
+                  <circle cx="10" cy="11.2" r="3.4" stroke="#FFFFFF" strokeWidth="1.8" />
+                  <path d="M7.4 5.5 8.7 3.2h2.6l1.3 2.3" stroke="#FFFFFF" strokeWidth="1.8" strokeLinejoin="round" />
+                </svg>
+              </button>
+              <button type="button" className="switch-camera" onClick={stopCamera} aria-label="Switch camera">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M3 8a7 7 0 0 1 11.6-3.3L17 7" stroke="#22262A" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M17 3.5V7h-3.5" stroke="#22262A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M17 12a7 7 0 0 1-11.6 3.3L3 13" stroke="#22262A" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M3 16.5V13h3.5" stroke="#22262A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {photoDataUrl && !showCamera && (
+          <div className="capture-preview">
+            <div className="capture-header">
+              <div className="location-pill">
+                <span className="dot blink"></span>
+                <span className="location-name">{DEMO_LOCATION}</span>
+                <span className="location-count">14</span>
+              </div>
+            </div>
+            <div className="preview-well">
+              <img src={photoDataUrl} alt="Captured" className="preview-image" />
+            </div>
+            <p className="instruction">Ready to find the scene?</p>
+            <div className="shutter-row">
+              <button
+                type="button"
+                className="last-capture"
+                onClick={() => {
+                  setPhotoDataUrl(null);
+                  fileInputRef.current?.click();
+                }}
+                aria-label="Retake"
+              />
+              <button
+                type="button"
+                className="shutter primary"
+                onClick={() => setStep("questions")}
+                aria-label="Continue"
+              >
+                <span>Continue</span>
+              </button>
+              <button
+                type="button"
+                className="switch-camera"
+                onClick={() => setPhotoDataUrl(null)}
+                aria-label="Retake"
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M3 8a7 7 0 0 1 11.6-3.3L17 7" stroke="#22262A" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M17 3.5V7h-3.5" stroke="#22262A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M17 12a7 7 0 0 1-11.6 3.3L3 13" stroke="#22262A" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M3 16.5V13h3.5" stroke="#22262A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
             <input
-              value={movieQuery}
-              onChange={(e) => setMovieQuery(e.target.value)}
-              style={{
-                display: "block",
-                width: "100%",
-                marginTop: 4,
-                padding: "0.65rem",
-                borderRadius: "var(--radius-sm)",
-                border: "2px solid var(--warm-border)",
-                background: "var(--warm-surface)",
-                color: "var(--ink)",
-              }}
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              style={{ display: "none" }}
             />
-          </label>
-          <button
-            type="button"
-            onClick={runMatch}
-            disabled={loading}
-            style={btnStyle}
-          >
-            {loading ? "Matching…" : "Find Match"}
-          </button>
-          {error && (
-            <p
-              style={{
-                color: "var(--ember-orange)",
-                marginTop: "0.75rem",
-                padding: "0.75rem",
-                background: "var(--warm-surface)",
-                borderRadius: "var(--radius-sm)",
-                border: "1px solid var(--warm-border)",
-              }}
-            >
-              {error}
-            </p>
-          )}
-        </section>
-      )}
-
-      {step === "matching" && (
-        <section>
-          <h2
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "1.5rem",
-              marginTop: 0,
-            }}
-          >
-            3. Matching
-          </h2>
-          <div
-            style={{
-              padding: "2rem",
-              textAlign: "center",
-              background: "var(--warm-surface)",
-              borderRadius: "var(--radius-lg)",
-              border: "1px solid var(--warm-border)",
-            }}
-          >
-            <p style={{ opacity: 0.8 }}>Your photo ↔ film scene…</p>
           </div>
-        </section>
-      )}
+        )}
 
-      {step === "merge" && match && (
-        <section>
-          <h2
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "1.5rem",
-              marginTop: 0,
-            }}
-          >
-            4. Merge
-          </h2>
-          <div
-            style={{
-              padding: "1rem",
-              background: "var(--forest-teal)",
-              color: "var(--canvas)",
-              borderRadius: "var(--radius-lg)",
-              marginBottom: "1rem",
-            }}
-          >
-            <p style={{ margin: "0 0 0.5rem" }}>
-              <strong style={{ fontFamily: "var(--font-display)", fontSize: "1.2rem" }}>
-                {match.filmTitle}
-              </strong>{" "}
-              ({match.year})
-            </p>
-            <p style={{ margin: 0, opacity: 0.9, fontSize: "0.85rem" }}>
-              Match quality: {match.mergeOk ? "✓ Excellent" : "⚠ Needs adjustment"}
-            </p>
-          </div>
-          <img
-            src={match.stillUrl}
-            alt="film still"
-            style={{
-              width: "100%",
-              borderRadius: "var(--radius-lg)",
-              border: "2px solid var(--warm-border)",
-              marginBottom: "0.75rem",
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => setStep("map")}
-            style={{ ...btnStyle, marginBottom: "0.75rem" }}
-          >
-            Unlock Map
-          </button>
-          <pre>{JSON.stringify(match, null, 2)}</pre>
-        </section>
-      )}
-
-      {step === "vantage" && match && (
-        <section>
-          <h2
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "1.5rem",
-              marginTop: 0,
-            }}
-          >
-            5. Vantage
-          </h2>
-          <div
-            style={{
-              padding: "1rem",
-              background: "var(--warm-surface)",
-              borderRadius: "var(--radius-sm)",
-              border: "1px solid var(--warm-border)",
-              marginBottom: "1rem",
-            }}
-          >
-            <p style={{ margin: 0, opacity: 0.8 }}>
-              Stand here / shoot from this angle, then retake.
-            </p>
-          </div>
-          <img
-            src={match.vantageUrl}
-            alt="vantage"
-            style={{
-              width: "100%",
-              borderRadius: "var(--radius-lg)",
-              border: "2px solid var(--warm-border)",
-              marginBottom: "0.75rem",
-            }}
-          />
-          <button
-            type="button"
-            onClick={runMatch}
-            style={{ ...btnStyle, marginBottom: "0.75rem" }}
-          >
-            Retake / Re-match
-          </button>
-          <pre>{JSON.stringify(match, null, 2)}</pre>
-        </section>
-      )}
-
-      {step === "map" && (
-        <section>
-          <h2
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "1.5rem",
-              marginTop: 0,
-            }}
-          >
-            6. Map Unlock
-          </h2>
-          
-          <div
-            style={{
-              position: "relative",
-              minHeight: "300px",
-              background: "linear-gradient(180deg, #c5dff8 0%, #a6cee3 100%)",
-              borderRadius: "var(--radius-xl)",
-              border: "2px solid var(--warm-border)",
-              padding: "1rem",
-              marginBottom: "1rem",
-              overflow: "hidden",
-            }}
-          >
-            <svg
-              viewBox="0 0 300 400"
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: "100%",
-                opacity: 0.3,
-              }}
-            >
-              <path
-                d="M100,50 L120,80 L140,70 L160,120 L180,140 L200,180 L210,220 L200,260 L180,300 L160,340 L140,360 L120,350 L100,320 L80,280 L70,240 L80,200 L90,160 L95,120 L100,80 Z"
-                fill="var(--canvas)"
-                stroke="var(--warm-border)"
-                strokeWidth="2"
-              />
+        <nav className="dock">
+          <a href="#shoot" className="dock-item active">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <rect x="2.5" y="6" width="15" height="11" rx="2.5" stroke="#FFFFFF" strokeWidth="1.6" />
+              <circle cx="10" cy="11.5" r="3" stroke="#FFFFFF" strokeWidth="1.6" />
+              <path d="M7 6l1.2-2.2h3.6L13 6" stroke="#FFFFFF" strokeWidth="1.6" strokeLinejoin="round" />
             </svg>
+            Shoot
+          </a>
+          <button type="button" className="dock-item" onClick={() => setStep("map")}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M2.5 5.5 7.5 3.5l5 2 5-2v11l-5 2-5-2-5 2z" stroke="#22262A" strokeWidth="1.6" strokeLinejoin="round" />
+              <path d="M7.5 3.5v11M12.5 5.5v11" stroke="#22262A" strokeWidth="1.6" />
+            </svg>
+            Map
+          </button>
+        </nav>
+      </div>
+    );
+  }
 
-            <div style={{ position: "relative", zIndex: 1 }}>
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "0.75rem",
-                  justifyContent: "center",
-                  padding: "1rem 0",
-                }}
-              >
-                {match && (
-                  <div
-                    key={match.spotId}
-                    style={{
-                      width: "80px",
-                      height: "80px",
-                      background: "linear-gradient(135deg, #ff6b9d 0%, #c06c84 100%)",
-                      border: "3px solid var(--ink)",
-                      borderRadius: "var(--radius-sm)",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: "0.5rem",
-                      boxShadow: "0 2px 0 rgba(0,0,0,0.2)",
-                      cursor: "pointer",
-                      transition: "transform 0.2s",
-                    }}
-                    title={`${match.filmTitle} (${match.year})`}
-                  >
-                    <div style={{ fontSize: "1.5rem" }}>🎬</div>
-                    <div
-                      style={{
-                        fontSize: "0.6rem",
-                        fontWeight: 600,
-                        textAlign: "center",
-                        marginTop: "0.25rem",
-                        color: "var(--canvas)",
-                        lineHeight: 1.1,
-                      }}
-                    >
-                      {match.filmTitle.split(" ")[0]}
-                    </div>
-                  </div>
-                )}
+  if (step === "questions") {
+    return (
+      <div className="screen questions">
+        <div className="questions-header">
+          <button type="button" onClick={() => setStep("capture")} className="back-link">
+            Retake
+          </button>
+          <span className="counter">2 / 2</span>
+        </div>
 
-                {match?.goNext.slice(0, 3).map((g, idx) => {
-                  const colors = [
-                    "linear-gradient(135deg, #a8e6cf 0%, #56c596 100%)",
-                    "linear-gradient(135deg, #ffd93d 0%, #f6b93b 100%)", 
-                    "linear-gradient(135deg, #a8d8ea 0%, #6eb5d0 100%)",
-                  ];
-                  return (
-                    <div
-                      key={g.spotId}
-                      style={{
-                        width: "80px",
-                        height: "80px",
-                        background: colors[idx % colors.length],
-                        border: "3px solid var(--ink)",
-                        borderRadius: "var(--radius-sm)",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        padding: "0.5rem",
-                        boxShadow: "0 2px 0 rgba(0,0,0,0.2)",
-                        cursor: "pointer",
-                      }}
-                      title={g.label}
-                    >
-                      <div style={{ fontSize: "1.5rem" }}>🎞️</div>
-                      <div
-                        style={{
-                          fontSize: "0.6rem",
-                          fontWeight: 600,
-                          textAlign: "center",
-                          marginTop: "0.25rem",
-                          color: "var(--ink)",
-                          lineHeight: 1.1,
-                        }}
-                      >
-                        {g.label.split(" ").slice(0, 2).join(" ")}
-                      </div>
-                    </div>
-                  );
-                })}
+        <div className="questions-body">
+          {photoDataUrl && (
+            <div className="thumbnail">
+              <img src={photoDataUrl} alt="Captured" />
+            </div>
+          )}
 
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={`locked-${i}`}
-                    style={{
-                      width: "80px",
-                      height: "80px",
-                      background: "#d4d4d4",
-                      border: "3px solid #999",
-                      borderRadius: "var(--radius-sm)",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: "0.5rem",
-                      boxShadow: "inset 0 2px 4px rgba(0,0,0,0.15)",
-                      opacity: 0.5,
-                      filter: "grayscale(1)",
-                    }}
-                  >
-                    <div style={{ fontSize: "1.5rem", opacity: 0.5 }}>🔒</div>
-                    <div
-                      style={{
-                        fontSize: "0.6rem",
-                        fontWeight: 600,
-                        textAlign: "center",
-                        marginTop: "0.25rem",
-                        color: "#666",
-                      }}
-                    >
-                      Locked
-                    </div>
-                  </div>
-                ))}
+          <div className="location-card">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" className="check-icon">
+              <circle cx="10" cy="10" r="9" fill="#1C4C6B" />
+              <path d="m5.6 10.3 2.9 2.8 5.9-6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <div className="location-info">
+              <span className="micro-label">Where you are</span>
+              <span className="location-title">{DEMO_LOCATION}</span>
+            </div>
+            <button type="button" className="edit-button">
+              Edit
+            </button>
+          </div>
+
+          <h1 className="question-title">Know what was filmed here?</h1>
+          <p className="question-subtitle">A guess narrows it a lot. A wrong one costs nothing.</p>
+
+          <label htmlFor="movie-input" className="micro-label">
+            Your guess
+          </label>
+          <input
+            id="movie-input"
+            type="text"
+            value={movieQuery}
+            onChange={(e) => setMovieQuery(e.target.value)}
+            placeholder="Spider-Man"
+            className="movie-input"
+            autoFocus
+          />
+
+          <div className="spacer" />
+
+          <button
+            type="button"
+            onClick={() => setStep("scanning")}
+            disabled={!movieQuery.trim()}
+            className="primary-button"
+          >
+            Find the scene
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === "scanning") {
+    return (
+      <div className="screen scanning">
+        <div className="frozen-frame">
+          {photoDataUrl && <img src={photoDataUrl} alt="Scanning" />}
+          <div className="scan-line"></div>
+          <div className="geometry-outline outline-1"></div>
+          <div className="geometry-outline outline-2"></div>
+          <div className="geometry-outline outline-3"></div>
+        </div>
+
+        <div className="scanning-readout">
+          <h1 className="scanning-title">Reading the frame</h1>
+          <p className="scanning-subtitle">{DEMO_LOCATION}, 14 scenes, narrowing on your guess.</p>
+
+          <div className="scanning-steps">
+            <div className="step done">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                <circle cx="10" cy="10" r="9" fill="#1C4C6B" />
+                <path d="m5.6 10.3 2.9 2.8 5.9-6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span>14 candidates within 300 m</span>
+            </div>
+            <div className="step done">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                <circle cx="10" cy="10" r="9" fill="#1C4C6B" />
+                <path d="m5.6 10.3 2.9 2.8 5.9-6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span>Narrowed to 3</span>
+            </div>
+            <div className="step active">
+              <span className="spinner"></span>
+              <span>Matching the skyline</span>
+            </div>
+            <div className="step waiting">
+              <span className="spinner"></span>
+              <span>Locking the camera position</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="progress-bar">
+          <div className="progress-fill"></div>
+        </div>
+
+        <button type="button" onClick={() => setStep("questions")} className="cancel-button">
+          Cancel
+        </button>
+      </div>
+    );
+  }
+
+  if (step === "result" && match) {
+    return (
+      <div className="screen result">
+        <button type="button" onClick={() => setStep("capture")} className="back-button">
+          <svg width="19" height="19" viewBox="0 0 20 20" fill="none">
+            <path d="M12.5 4 6.5 10l6 6" stroke="#22262A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+
+        <div className="result-body">
+          <div className="chip guessed">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+              <path d="m3 8.4 3.2 3.1L13 4.8" stroke="#1C4C6B" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span>Guessed it</span>
+          </div>
+
+          <h1 className="verdict">Exact match.</h1>
+
+          <div className="frame-row">
+            <div className="frame-col">
+              <div className="frame-well">
+                {photoDataUrl && <img src={photoDataUrl} alt="Yours" />}
               </div>
-
-              <div
-                style={{
-                  background: "var(--canvas)",
-                  border: "2px solid var(--ink)",
-                  borderRadius: "var(--radius-sm)",
-                  padding: "0.75rem",
-                  margin: "1rem auto 0",
-                  maxWidth: "220px",
-                  textAlign: "center",
-                  boxShadow: "0 2px 0 rgba(0,0,0,0.1)",
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: "var(--font-display)",
-                    fontSize: "1.1rem",
-                    marginBottom: "0.25rem",
-                  }}
-                >
-                  I 🎞️ NY
-                </div>
-                <div style={{ fontSize: "0.75rem", opacity: 0.7 }}>
-                  {match ? "1 spot unlocked" : "Keep exploring"}
-                </div>
+              <div className="frame-label">Yours</div>
+            </div>
+            <div className="frame-col">
+              <div className="frame-well placeholder">
+                <span>[ still ]</span>
               </div>
+              <div className="frame-label">Film</div>
             </div>
           </div>
 
-          <details
-            style={{
-              background: "var(--warm-surface)",
-              border: "1px solid var(--warm-border)",
-              borderRadius: "var(--radius-sm)",
-              padding: "0.75rem",
-              marginBottom: "1rem",
-            }}
-          >
-            <summary
-              style={{
-                cursor: "pointer",
-                fontWeight: 500,
-                fontSize: "0.9rem",
-              }}
-            >
-              Unlocked Locations
-            </summary>
-            {match && (
-              <ul
-                style={{
-                  listStyle: "none",
-                  padding: 0,
-                  margin: "0.75rem 0 0",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0.5rem",
-                }}
-              >
-                <li
-                  style={{
-                    padding: "0.5rem",
-                    background: "var(--accent-lavender)",
-                    borderRadius: "var(--radius-sm)",
-                    border: "1px solid var(--warm-border)",
-                    fontSize: "0.85rem",
-                  }}
-                >
-                  <strong>{match.filmTitle} ({match.year})</strong>
-                  <br />
-                  <span style={{ opacity: 0.7, fontSize: "0.8rem" }}>
-                    {match.lat.toFixed(4)}, {match.lng.toFixed(4)}
-                  </span>
-                </li>
-                {match.goNext.slice(0, 3).map((g) => (
-                  <li
-                    key={g.spotId}
-                    style={{
-                      padding: "0.5rem",
-                      background: "var(--canvas)",
-                      borderRadius: "var(--radius-sm)",
-                      border: "1px solid var(--warm-border)",
-                      fontSize: "0.85rem",
-                    }}
-                  >
-                    <strong>{g.label}</strong>
-                    <br />
-                    <span style={{ opacity: 0.7, fontSize: "0.8rem" }}>
-                      {g.lat.toFixed(4)}, {g.lng.toFixed(4)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </details>
+          <div className="match-score">
+            <span className="score-number">87</span>
+            <span className="score-label">% framing match</span>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setMatch(null);
-              setPhotoDataUrl(null);
-              setStep("capture");
-            }}
-            style={btnStyle}
-          >
-            Start Over
+          <div className="film-card">
+            <h2 className="film-title">{match.filmTitle}</h2>
+            <div className="film-meta">
+              {match.year} · Marc Webb
+            </div>
+            <div className="clip-tile">
+              <button type="button" className="play-button">
+                <svg width="17" height="17" viewBox="0 0 16 16" fill="none">
+                  <path d="M5.5 3.5 12 8l-6.5 4.5v-9Z" fill="#FFFFFF" />
+                </svg>
+              </button>
+            </div>
+            <p className="film-description">
+              The Times Square fight. Garfield and Foxx, shot on the block you are standing on.
+            </p>
+          </div>
+
+          <div className="fun-fact-card">
+            <div className="fun-fact-text">[ fun fact: one line from TMDB ]</div>
+          </div>
+
+          <button type="button" onClick={() => setStep("merge")} className="primary-button recreate">
+            Recreate this shot
           </button>
-        </section>
-      )}
-    </div>
-  );
-}
+          <button type="button" onClick={() => setStep("map")} className="text-link">
+            Just save it
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-const btnStyle: CSSProperties = {
-  background: "var(--accent-lavender)",
-  color: "var(--ink)",
-  border: "2px solid var(--warm-border)",
-  borderRadius: "var(--radius-sm)",
-  padding: "0.75rem 1rem",
-  width: "100%",
-  fontWeight: 500,
-  fontSize: "1rem",
-};
+  if (step === "merge" && match) {
+    return (
+      <div className="screen merge">
+        <h1 className="merge-title">Merge Demo</h1>
+        <p className="merge-description">
+          In this demo, the film still ({match.filmTitle}) would overlay onto your photo here.
+          The composite image IS the recreate.
+        </p>
+        <div className="merge-preview">
+          {photoDataUrl && <img src={photoDataUrl} alt="Base photo" />}
+          {match.stillUrl && (
+            <img
+              src={match.stillUrl}
+              alt="Film still overlay"
+              className="merge-overlay"
+              style={{ opacity: 0.5 }}
+            />
+          )}
+        </div>
+        <button type="button" onClick={() => setStep("unlocked")} className="primary-button">
+          Claim the stamp
+        </button>
+      </div>
+    );
+  }
+
+  if (step === "unlocked") {
+    return (
+      <div className="screen unlocked">
+        <div className="unlocked-stage">
+          <div className="stamp-eyebrow">Stamp 12 of 118</div>
+          <div className="badge-large">
+            <svg width="188" height="188" viewBox="0 0 188 188" fill="none">
+              <circle cx="94" cy="94" r="92" fill="#1C4C6B" />
+              <circle cx="94" cy="94" r="80" fill="none" stroke="#FFFFFF" strokeOpacity="0.35" strokeWidth="2" />
+              <g fill="#FFFFFF" fillOpacity="0.9">
+                <circle cx="94" cy="28" r="8" />
+                <circle cx="94" cy="160" r="8" />
+                <circle cx="28" cy="94" r="8" />
+                <circle cx="160" cy="94" r="8" />
+                <circle cx="47" cy="47" r="8" />
+                <circle cx="141" cy="47" r="8" />
+                <circle cx="47" cy="141" r="8" />
+                <circle cx="141" cy="141" r="8" />
+              </g>
+              <circle cx="94" cy="94" r="44" fill="#123A52" fillOpacity="1" />
+            </svg>
+          </div>
+          <h1 className="unlocked-title">
+            Times Square
+            <br />
+            is yours.
+          </h1>
+          <div className="trail-card">
+            <div className="trail-header">
+              <span className="trail-name">Marvel trail</span>
+              <span className="trail-progress">1 / 6</span>
+            </div>
+            <div className="trail-segments">
+              <span className="segment filled"></span>
+              <span className="segment"></span>
+              <span className="segment"></span>
+              <span className="segment"></span>
+              <span className="segment"></span>
+              <span className="segment"></span>
+            </div>
+          </div>
+        </div>
+        <button type="button" onClick={() => setStep("map")} className="primary-button">
+          See the map
+        </button>
+      </div>
+    );
+  }
+
+  if (step === "map") {
+    return (
+      <div className="screen map">
+        <div className="map-placeholder">
+          <div className="map-header">
+            <div className="map-title">New York</div>
+            <div className="map-count">3 of 14 zones</div>
+          </div>
+          <div className="map-canvas">
+            <div className="stamp-pin">
+              <div className="stamp-icon">🎬</div>
+              <div className="stamp-label">Times Square</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="map-sheet">
+          <div className="sheet-handle"></div>
+          <div className="sheet-content">
+            <div className="sheet-row">
+              <div className="sheet-thumbnail"></div>
+              <div className="sheet-info">
+                <div className="sheet-title">Times Square</div>
+                <div className="sheet-meta">{match?.filmTitle} · {match?.year} · 87% match</div>
+              </div>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M7.5 4l6 6-6 6" stroke="#1C4C6B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            {match?.goNext && match.goNext.length > 0 && (
+              <div className="go-next-section">
+                <div className="micro-label">Where to go next</div>
+                {match.goNext.map((item) => (
+                  <div key={item.spotId} className="go-next-item">
+                    {item.label}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <nav className="dock">
+          <button type="button" onClick={() => setStep("capture")} className="dock-item">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <rect x="2.5" y="6" width="15" height="11" rx="2.5" stroke="#22262A" strokeWidth="1.6" />
+              <circle cx="10" cy="11.5" r="3" stroke="#22262A" strokeWidth="1.6" />
+              <path d="M7 6l1.2-2.2h3.6L13 6" stroke="#22262A" strokeWidth="1.6" strokeLinejoin="round" />
+            </svg>
+            Shoot
+          </button>
+          <a href="#map" className="dock-item active">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M2.5 5.5 7.5 3.5l5 2 5-2v11l-5 2-5-2-5 2z" stroke="#FFFFFF" strokeWidth="1.6" strokeLinejoin="round" />
+              <path d="M7.5 3.5v11M12.5 5.5v11" stroke="#FFFFFF" strokeWidth="1.6" />
+            </svg>
+            Map
+          </a>
+        </nav>
+      </div>
+    );
+  }
+
+  return null;
+}
