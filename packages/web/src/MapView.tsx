@@ -238,25 +238,34 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
     }
 
     const unlockedSpots = filteredSpots.filter((s) => unlocks.includes(s.spotId));
+    
+    // Throttled fog hole tracking to reduce phone lag
+    let trackPending = false;
     const trackHoles = () => {
-      const positions = unlockedSpots.map((s) => {
-        const p = map.project([s.lng, s.lat]);
-        return `radial-gradient(circle at ${p.x}px ${p.y}px, transparent calc(220px * ${2 ** (map.getZoom() - ZOOM)} * 0.72), #000 calc(220px * ${2 ** (map.getZoom() - ZOOM)}))`;
+      if (trackPending) return;
+      trackPending = true;
+      requestAnimationFrame(() => {
+        trackPending = false;
+        const positions = unlockedSpots.map((s) => {
+          const p = map.project([s.lng, s.lat]);
+          const z = 2 ** (map.getZoom() - ZOOM);
+          return `radial-gradient(circle at ${p.x}px ${p.y}px, transparent calc(220px * ${z} * 0.72), #000 calc(220px * ${z}))`;
+        });
+
+        if (saved) {
+          const p = map.project([focus.lng, focus.lat]);
+          const z = 2 ** (map.getZoom() - ZOOM);
+          positions.unshift(`radial-gradient(circle at ${p.x}px ${p.y}px, transparent calc(220px * ${z} * 0.72), #000 calc(220px * ${z}))`);
+        }
+
+        const style = cloudsRef.current?.style;
+        if (positions.length > 0) {
+          style?.setProperty("-webkit-mask-image", positions.join(", "));
+          style?.setProperty("mask-image", positions.join(", "));
+          style?.setProperty("-webkit-mask-composite", "source-in");
+          style?.setProperty("mask-composite", "intersect");
+        }
       });
-
-      if (saved) {
-        const p = map.project([focus.lng, focus.lat]);
-        const z = 2 ** (map.getZoom() - ZOOM);
-        positions.unshift(`radial-gradient(circle at ${p.x}px ${p.y}px, transparent calc(220px * ${z} * 0.72), #000 calc(220px * ${z}))`);
-      }
-
-      const style = cloudsRef.current?.style;
-      if (positions.length > 0) {
-        style?.setProperty("-webkit-mask-image", positions.join(", "));
-        style?.setProperty("mask-image", positions.join(", "));
-        style?.setProperty("-webkit-mask-composite", "source-in");
-        style?.setProperty("mask-composite", "intersect");
-      }
     };
     trackHoles();
     map.on("move", trackHoles);
