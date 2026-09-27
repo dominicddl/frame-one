@@ -1346,17 +1346,16 @@ figure {
 .trail-filters {
   position: absolute;
   top: calc(72px + env(safe-area-inset-top));
-  left: 16px;
+  left: 12px;
   right: 0;
   z-index: 5;
   display: flex;
-  gap: 6px;
-  padding-right: 16px;
+  gap: 5px;
+  padding-right: 12px;
   animation: fade 300ms ease-out 100ms both;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  scroll-padding-left: 16px;
 }
 
 .trail-filters::-webkit-scrollbar {
@@ -1364,18 +1363,19 @@ figure {
 }
 
 /* BRIEF: trail chips 32px height, 13px system-ui, pill shape */
+/* Fit all 5 at 390px: (390-12-12) / 5 chips - 5*4px gap = ~68px per chip */
 .trail-chip {
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  height: 32px;
-  padding: 0 12px;
+  height: 30px;
+  padding: 0 10px;
   background: #f7f1ea;
   border: 1px solid rgba(42, 36, 31, 0.12);
   border-radius: 999px;
   color: #2a241f;
   font-family: system-ui, -apple-system, sans-serif;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;

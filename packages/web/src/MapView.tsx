@@ -407,8 +407,14 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
             <div className="sheet-title">{unlocks.length} stamp{unlocks.length !== 1 ? "s" : ""} collected</div>
             <p className="sheet-meta">Keep exploring to unlock more film locations.</p>
             {/* Derive go-next from remaining locked spots for ?demo=1 */}
+            {/* Prefer active trail filter, fall back to all spots */}
             {(() => {
-              const lockedSpots = filteredSpots.filter((s) => !unlocks.includes(s.spotId)).slice(0, 3);
+              let lockedSpots = filteredSpots.filter((s) => !unlocks.includes(s.spotId));
+              // Fall back to ALL spots if current trail has no locked spots
+              if (lockedSpots.length === 0) {
+                lockedSpots = spots.filter((s) => !unlocks.includes(s.spotId));
+              }
+              lockedSpots = lockedSpots.slice(0, 3);
               if (lockedSpots.length === 0) return null;
               return (
                 <div className="go-next">
