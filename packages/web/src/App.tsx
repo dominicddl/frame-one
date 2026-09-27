@@ -480,13 +480,15 @@ export default function App() {
 
         <div className="merge-preview-large">
           {photoDataUrl && <img src={photoDataUrl} alt="Your photo" className="merge-base" />}
-          <div className="merge-overlay-container">
-            <img
-              src="/demo/tasm2-still.jpg"
-              alt="Film still overlay"
-              className="merge-overlay"
-            />
-          </div>
+          {match.stillUrl && (
+            <div className="merge-overlay-container">
+              <img
+                src={match.stillUrl}
+                alt="Film still overlay"
+                className="merge-overlay"
+              />
+            </div>
+          )}
         </div>
 
         <div className="merge-info">
