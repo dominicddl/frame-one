@@ -1037,16 +1037,12 @@ figure {
   border: none;
 }
 
+/* BRIEF: 56px circular character stamps with #e87a2a ring */
 .stamp-pin {
   position: relative;
-  width: 48px;
-  height: 48px;
-  padding: 3px;
-  background: var(--stamp-paper);
-  border: 3px dotted #c9bda6;
-  border-radius: 5px;
-  box-shadow: 0 0 0 5px rgba(28, 76, 107, 0.16), 0 0 28px 6px rgba(28, 76, 107, 0.4), 0 6px 14px rgba(26, 26, 24, 0.25);
-  transform: rotate(-4deg);
+  width: 56px;
+  height: 56px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.35));
 }
 
 .stamp-face {
@@ -1055,8 +1051,11 @@ figure {
   justify-content: center;
   width: 100%;
   height: 100%;
-  background: var(--stamp-ink);
-  border-radius: 2px;
+}
+
+.stamp-face svg {
+  width: 56px;
+  height: 56px;
 }
 
 .stamp-ripple {
@@ -1098,23 +1097,25 @@ figure {
   filter: saturate(1.1);
 }
 
-/* Plain yellow "?" marker for locked spots */
+/* BRIEF: Yellow ? peek marker - SVG container, hit target ≥44px */
 .peek-pin {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: #F5C842;
-  border: 2px solid #D4A832;
-  border-radius: 50%;
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-size: 18px;
-  font-weight: 600;
-  color: #5C4A1F;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+  width: 44px;
+  height: 44px;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3));
   animation: pin-pop 400ms var(--ease-pop) both;
+  cursor: pointer;
+}
+
+.peek-pin:active {
+  transform: scale(0.94);
+}
+
+.peek-pin:focus-visible {
+  outline: 2px solid #e87a2a;
+  outline-offset: 2px;
 }
 
 .go-chip {
@@ -1137,12 +1138,13 @@ figure {
 }
 
 /* === GREY OVERLAY (locked map fog) === */
+/* BRIEF: primary wash rgba(28,28,30,0.72), acceptable up to 0.78 */
 .grey-overlay {
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  background: rgba(40, 42, 48, 0.82);
+  background: rgba(28, 28, 30, 0.72);
 }
 
 /* When unlocks exist, mask shows through as holes */
@@ -1227,30 +1229,40 @@ figure {
   display: none;
 }
 
+/* BRIEF: trail chips 32px height, 13px system-ui, pill shape */
 .trail-chip {
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  height: 36px;
-  padding: 0 16px;
-  background: var(--surface);
-  border: 1.5px solid var(--line);
-  border-radius: 18px;
-  color: var(--ink);
-  font-size: 14px;
+  height: 32px;
+  padding: 0 14px;
+  background: #f7f1ea;
+  border: 1px solid rgba(42, 36, 31, 0.12);
+  border-radius: 999px;
+  color: #2a241f;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.15s, color 0.15s;
 }
 
 .trail-chip.active {
-  background: var(--trail-color, var(--action));
-  border-color: var(--trail-color, var(--action));
-  color: #FFFFFF;
+  background: #e87a2a;
+  border-color: #e87a2a;
+  color: #fff;
+}
+
+.trail-chip:not(.active):hover {
+  background: #efe8df;
 }
 
 .trail-chip:not(.active):active {
-  transform: scale(0.96);
+  background: #e8e4df;
+}
+
+.trail-chip.active:active {
+  background: #c96a24;
 }
 
 .unlock-stage {

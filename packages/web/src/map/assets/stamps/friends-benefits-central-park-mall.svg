@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 112" width="112" height="112" role="img" aria-label="Couple stamp">
+  <defs>
+    <clipPath id="clip"><circle cx="56" cy="56" r="50"/></clipPath>
+  </defs>
+  <circle cx="56" cy="56" r="53.5" fill="none" stroke="#e87a2a" stroke-width="5"/>
+  <circle cx="56" cy="56" r="50" fill="#2a241f"/>
+  <g clip-path="url(#clip)">
+    <!-- Soft park hint -->
+    <ellipse cx="56" cy="90" rx="40" ry="14" fill="#3d5a3d" opacity="0.45"/>
+    <!-- Left figure (shorter hair) -->
+    <circle cx="42" cy="44" r="11" fill="#e8c4a8"/>
+    <path d="M30 58 Q42 52 54 58 L54 92 L30 92 Z" fill="#5d4e37"/>
+    <path d="M32 38 Q42 30 52 38 Q48 48 42 48 Q36 48 32 38 Z" fill="#2a241f"/>
+    <!-- Right figure (longer hair) -->
+    <circle cx="70" cy="44" r="11" fill="#e8c4a8"/>
+    <path d="M58 58 Q70 52 82 58 L82 92 L58 92 Z" fill="#8b4513"/>
+    <path d="M58 40 Q62 28 70 28 Q78 28 82 40 L80 56 Q70 60 60 56 Z" fill="#4a3728"/>
+    <!-- Joined hands / heart hint between them -->
+    <path d="M50 62 Q56 56 62 62 Q56 70 50 62 Z" fill="#e87a2a"/>
+  </g>
+</svg>
