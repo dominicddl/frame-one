@@ -21,11 +21,11 @@ figure {
 
 .micro-label {
   display: block;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--faint);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
 }
 
 .spacer {
@@ -44,13 +44,12 @@ figure {
   background: var(--action);
   border: none;
   border-radius: 20px;
-  font-size: 16px;
-  font-weight: 500;
   color: var(--on-action);
   box-shadow: 0 10px 26px rgba(28, 76, 107, 0.45);
   cursor: pointer;
   transition: transform 0.2s;
-  letter-spacing: 0.01em;
+  font-size: 17px;
+  font-weight: 700;
 }
 
 .primary-button:disabled {
@@ -255,10 +254,9 @@ figure {
   height: 60px;
   padding: 0 30px;
   border-radius: 30px;
-  font-size: 16px;
-  font-weight: 500;
   color: var(--on-action);
-  letter-spacing: 0.01em;
+  font-size: 17px;
+  font-weight: 700;
 }
 
 .capture .dock {
@@ -403,14 +401,15 @@ figure {
 }
 
 .question-title {
-  font-family: var(--font-display);
   margin: 20px 0 6px;
-  font-weight: 400;
-  font-size: 30px;
-  line-height: 34px;
-  letter-spacing: -0.01em;
   color: var(--title);
   animation: drift 400ms var(--ease-out) both;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 34px;
+  line-height: 38px;
+  letter-spacing: 0.014em;
 }
 
 .question-subtitle {
@@ -479,14 +478,15 @@ figure {
 }
 
 .scanning-title {
-  font-family: var(--font-display);
   margin: 20px 0 6px;
-  font-weight: 400;
-  font-size: 30px;
-  line-height: 34px;
-  letter-spacing: -0.01em;
   color: var(--title);
   animation: drift 400ms var(--ease-out) both;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 36px;
+  line-height: 40px;
+  letter-spacing: 0.014em;
 }
 
 .scanning-subtitle {
@@ -534,13 +534,14 @@ figure {
 
 .verdict {
   margin: 4px 0 16px;
-  font-family: var(--font-display);
-  font-weight: 400;
-  font-size: 40px;
-  line-height: 44px;
-  letter-spacing: -0.01em;
   color: var(--title);
   animation: rise 420ms var(--ease-out) 140ms both;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 50px;
+  line-height: 54px;
+  letter-spacing: 0.014em;
 }
 
 .frame-row {
@@ -590,13 +591,14 @@ figure {
 }
 
 .film-title {
-  font-family: var(--font-display);
   margin: 0 0 4px;
-  font-weight: 400;
-  font-size: 26px;
-  line-height: 31px;
-  letter-spacing: -0.01em;
   color: var(--title);
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 35px;
+  letter-spacing: 0.014em;
 }
 
 .film-meta {
@@ -623,13 +625,14 @@ figure {
 }
 
 .recreate-title {
-  font-family: var(--font-display);
   margin: 0;
-  font-weight: 400;
-  font-size: 26px;
-  line-height: 30px;
-  letter-spacing: -0.01em;
   color: var(--title);
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 34px;
+  letter-spacing: 0.014em;
 }
 
 .merge-well {
@@ -707,18 +710,18 @@ figure {
   padding: 0;
   background: none;
   border: none;
-  font-size: inherit;
-  font-weight: 600;
   color: var(--action);
   text-decoration: underline;
   cursor: pointer;
+  font-size: inherit;
+  font-weight: 700;
 }
 
 /* === MAP === */
 @property --hr {
   syntax: "<length>";
   inherits: true;
-  initial-value: 190px;
+  initial-value: 220px;
 }
 
 .map-screen {
@@ -736,7 +739,7 @@ figure {
   position: absolute;
   inset: 0;
   z-index: 0;
-  background: #e8e4dc;
+  background: var(--map-land);
 }
 
 .map-marker {
@@ -783,6 +786,8 @@ figure {
 }
 
 .next-pin {
+  font-family: var(--font-serif);
+  font-style: italic;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -791,8 +796,7 @@ figure {
   background: var(--stamp-paper);
   border: 2px solid var(--stamp-ink);
   border-radius: 5px;
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 19px;
   color: var(--stamp-ink);
   box-shadow: 0 0 0 4px rgba(255, 251, 242, 0.9), 0 6px 14px rgba(26, 26, 24, 0.25);
   transform: rotate(-5deg);
@@ -884,12 +888,12 @@ figure {
 }
 
 .map-title {
-  font-family: var(--font-display);
-  font-size: 19px;
-  line-height: 24px;
-  letter-spacing: -0.01em;
   color: var(--title);
-  font-weight: 400;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 20px;
+  line-height: 24px;
+  letter-spacing: 0.014em;
 }
 
 .map-count {
@@ -912,12 +916,12 @@ figure {
 }
 
 .stamp-eyebrow {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--faint);
   animation: drift 420ms var(--ease-out) 200ms both;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
 }
 
 .badge-large {
@@ -926,15 +930,16 @@ figure {
 }
 
 .unlocked-title {
-  font-family: var(--font-display);
   margin: 26px 0 0;
-  font-weight: 400;
-  font-size: 38px;
-  line-height: 42px;
   text-align: center;
-  letter-spacing: -0.01em;
   color: var(--title);
   animation: drift 420ms var(--ease-out) 360ms both;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 44px;
+  line-height: 49px;
+  letter-spacing: 0.014em;
 }
 
 .unlocked-film {
@@ -999,12 +1004,12 @@ figure {
 }
 
 .sheet-title {
-  font-family: var(--font-display);
-  font-size: 23px;
-  line-height: 28px;
-  letter-spacing: -0.01em;
   color: var(--title);
-  font-weight: 400;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 26px;
+  line-height: 30px;
+  letter-spacing: 0.014em;
 }
 
 
@@ -1040,10 +1045,11 @@ figure {
   height: 26px;
   border: 2px solid var(--stamp-ink);
   border-radius: 4px;
-  font-size: 14px;
   color: var(--stamp-ink);
   transform: rotate(-5deg);
-  font-weight: 700;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 15px;
 }
 
 .go-next-text {
@@ -1060,11 +1066,10 @@ figure {
 }
 
 .go-next-film {
-  font-family: var(--font-display);
-  font-size: 15px;
-  line-height: 19px;
-  font-weight: 400;
   color: var(--ink);
+  font-size: 14px;
+  line-height: 19px;
+  font-weight: 500;
 }
 
 .go-next-area {
@@ -1124,8 +1129,8 @@ figure {
 .dock-item.active {
   padding: 0 18px 0 14px;
   background: var(--action);
-  font-weight: 600;
   color: var(--on-action);
+  font-weight: 700;
 }
 
 @keyframes inset-in {
@@ -1144,7 +1149,7 @@ figure {
     --hr: 0px;
   }
   to {
-    --hr: 190px;
+    --hr: 220px;
   }
 }
 

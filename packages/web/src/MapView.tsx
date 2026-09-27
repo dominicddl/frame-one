@@ -1,6 +1,6 @@
 import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import maplibregl, { type Map as MapLibreMap } from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import type { MatchResponse } from "@frame-one/shared";
 
 export interface SavedStamp {
@@ -17,24 +17,54 @@ interface MapViewProps {
   dock: ReactNode;
 }
 
-const ZOOM = 14;
+const ZOOM = 12.5;
 const STAMP_HEIGHT = 0.36;
+const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 
 const CLAPPER =
   '<svg width="26" height="26" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8.5" width="14" height="8.5" rx="1.5"/><path d="M3 8.5 4.6 4h12.2L17 8.5"/><path d="M7.4 4 6.6 8.5M11.4 4l-.8 4.5M15.2 4l-.8 4.5" stroke-width="1.4"/></svg>';
 
-const stampIcon = L.divIcon({
-  className: "map-marker",
-  html: `<div class="stamp-pin"><span class="stamp-ripple"></span><span class="stamp-face">${CLAPPER}</span></div>`,
-  iconSize: [48, 48],
-});
+function markerEl(html: string) {
+  const el = document.createElement("div");
+  el.className = "map-marker";
+  el.innerHTML = html;
+  return el;
+}
 
-function nextIcon(i: number) {
-  return L.divIcon({
-    className: "map-marker",
-    html: `<div class="next-pin" style="animation-delay: calc(var(--reveal) + ${600 + i * 90}ms)">?</div>`,
-    iconSize: [34, 34],
-  });
+const HANDOFF = {
+  land: "#E3DACB",
+  water: "#96C0D9",
+  park: "#B3D4C1",
+  building: "#D8CDB9",
+  street: "#FFFFFF",
+  casing: "#D6CBB8",
+  labelLand: "#5E584D",
+  labelWater: "#274E66",
+};
+
+// Repaints OpenFreeMap's Positron layers in the handoff map palette.
+function paintHandoff(map: MapLibreMap) {
+  for (const layer of map.getStyle().layers) {
+    const { id, type } = layer;
+    if (type === "background") map.setPaintProperty(id, "background-color", HANDOFF.land);
+    else if (id === "water") map.setPaintProperty(id, "fill-color", HANDOFF.water);
+    else if (id === "waterway") map.setPaintProperty(id, "line-color", HANDOFF.water);
+    else if (id === "park" || id === "landcover_wood") {
+      map.setPaintProperty(id, "fill-color", HANDOFF.park);
+      map.setPaintProperty(id, "fill-opacity", 0.9);
+    } else if (id === "landuse_residential") map.setPaintProperty(id, "fill-color", HANDOFF.land);
+    else if (id === "building") {
+      map.setPaintProperty(id, "fill-color", HANDOFF.building);
+      map.setPaintProperty(id, "fill-opacity", 0.55);
+    } else if (type === "line" && id.includes("casing")) map.setPaintProperty(id, "line-color", HANDOFF.casing);
+    else if (type === "line" && /highway|road|tunnel/.test(id)) map.setPaintProperty(id, "line-color", HANDOFF.street);
+    else if (type === "line" && id.startsWith("boundary")) map.setLayoutProperty(id, "visibility", "none");
+    else if (type === "symbol") {
+      const water = id.startsWith("water");
+      map.setPaintProperty(id, "text-color", water ? HANDOFF.labelWater : HANDOFF.labelLand);
+      map.setPaintProperty(id, "text-halo-color", water ? HANDOFF.water : HANDOFF.land);
+    }
+  }
 }
 
 type Cloud = { x: number; y: number; s: number; kind: "cumulus" | "stratus"; layer: "back" | "mid" | "front" };
@@ -138,27 +168,39 @@ export default function MapView({ saved, unlocking, home, onShoot, dock }: MapVi
   useEffect(() => {
     const el = mapRef.current;
     if (!el) return;
-    const map = L.map(el, { zoomControl: false, attributionControl: false, minZoom: 11, maxZoom: 18 });
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
-    map.setView([focus.lat, focus.lng], ZOOM, { animate: false });
-    map.panBy([0, el.clientHeight * (0.5 - STAMP_HEIGHT)], { animate: false });
+    const map = new maplibregl.Map({
+      container: el,
+      style: STYLE_URL,
+      center: [focus.lng, focus.lat],
+      zoom: ZOOM,
+      minZoom: 10,
+      maxZoom: 17,
+      attributionControl: false,
+      dragRotate: false,
+      pitchWithRotate: false,
+    });
+    map.touchZoomRotate.disableRotation();
+    map.on("style.load", () => paintHandoff(map));
+    map.panBy([0, el.clientHeight * (0.5 - STAMP_HEIGHT)], { duration: 0 });
 
     if (saved) {
-      L.marker([focus.lat, focus.lng], { icon: stampIcon, interactive: false, keyboard: false }).addTo(map);
-      saved.match.goNext.forEach((item, i) =>
-        L.marker([item.lat, item.lng], { icon: nextIcon(i), interactive: false, keyboard: false, title: item.label }).addTo(map),
-      );
+      const stamp = `<div class="stamp-pin"><span class="stamp-ripple"></span><span class="stamp-face">${CLAPPER}</span></div>`;
+      new maplibregl.Marker({ element: markerEl(stamp) }).setLngLat([focus.lng, focus.lat]).addTo(map);
+      saved.match.goNext.forEach((item, i) => {
+        const pin = `<div class="next-pin" style="animation-delay: calc(var(--reveal) + ${600 + i * 90}ms)">?</div>`;
+        new maplibregl.Marker({ element: markerEl(pin) }).setLngLat([item.lng, item.lat]).addTo(map);
+      });
     }
 
     const trackHole = () => {
-      const p = map.latLngToContainerPoint([focus.lat, focus.lng]);
+      const p = map.project([focus.lng, focus.lat]);
       const style = cloudsRef.current?.style;
       style?.setProperty("--hx", `${p.x}px`);
       style?.setProperty("--hy", `${p.y}px`);
       style?.setProperty("--hz", String(2 ** (map.getZoom() - ZOOM)));
     };
     trackHole();
-    map.on("move zoom", trackHole);
+    map.on("move", trackHole);
     return () => {
       map.remove();
     };
@@ -176,7 +218,7 @@ export default function MapView({ saved, unlocking, home, onShoot, dock }: MapVi
         <span className="map-count">{saved ? "1 stamp" : "No stamps yet"}</span>
       </div>
       <a className="osm-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
-        © OpenStreetMap contributors
+        © OpenStreetMap contributors · OpenFreeMap
       </a>
 
       {saved && unlocking && (
