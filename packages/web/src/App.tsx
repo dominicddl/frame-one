@@ -4,10 +4,11 @@ import { getSpots, postMatch, geocodePlace, type GeocodeSuggestion } from "./api
 import { useUnlocks } from "./hooks/useUnlocks";
 import { hasSeededDemo } from "@frame-one/shared";
 import MapView, { type SavedStamp } from "./MapView";
+import Profile from "./Profile";
 import "./tokens.css";
 import "./App.css";
 
-type Step = "capture" | "questions" | "scanning" | "result" | "soft-miss" | "recreate" | "map";
+type Step = "capture" | "questions" | "scanning" | "result" | "soft-miss" | "recreate" | "map" | "profile";
 
 interface Place {
   name: string;
@@ -77,7 +78,19 @@ function readFile(file: Blob, onLoad: (dataUrl: string) => void) {
   reader.readAsDataURL(file);
 }
 
-function Dock({ active, onShoot, onMap, className = "" }: { active: "shoot" | "map"; onShoot: () => void; onMap: () => void; className?: string }) {
+function Dock({
+  active,
+  onShoot,
+  onMap,
+  onProfile,
+  className = "",
+}: {
+  active: "shoot" | "map" | "profile";
+  onShoot: () => void;
+  onMap: () => void;
+  onProfile: () => void;
+  className?: string;
+}) {
   return (
     <nav className={`dock ${className}`} aria-label="Main">
       <button type="button" className={`dock-item${active === "shoot" ? " active" : ""}`} onClick={onShoot} aria-current={active === "shoot" ? "page" : undefined}>
@@ -94,6 +107,13 @@ function Dock({ active, onShoot, onMap, className = "" }: { active: "shoot" | "m
           <path d="M7.5 3.5v11M12.5 5.5v11" />
         </svg>
         Map
+      </button>
+      <button type="button" className={`dock-item${active === "profile" ? " active" : ""}`} onClick={onProfile} aria-current={active === "profile" ? "page" : undefined}>
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+          <circle cx="10" cy="7" r="3.2" />
+          <path d="M3.8 17c.8-3.2 3.3-5 6.2-5s5.4 1.8 6.2 5" strokeLinecap="round" />
+        </svg>
+        Profile
       </button>
     </nav>
   );
@@ -168,15 +188,25 @@ export default function App() {
   const recreateFileInputRef = useRef<HTMLInputElement>(null);
 
   // Use the useUnlocks hook as the single source of truth
-  const { unlocks, unlock, seedDemo } = useUnlocks();
+  const { unlocks, unlock, seedDemo, reset } = useUnlocks();
 
-  // Seed demo stamps once on first visit (map looks lived-in); ?demo=1 forces a reseed
+  // No auto-seed: the map seeds demo stamps after the first stamp's tutorial (MapView reveal).
+  // ?demo=1 skips straight to the final state; ?reset=1 wipes back to a fresh first visit.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("demo") === "1" || !hasSeededDemo()) {
-      seedDemo();
+    try {
+      if (params.get("reset") === "1") {
+        reset();
+        localStorage.removeItem("frame_one_guide_seen");
+      }
+      if (params.get("demo") === "1") {
+        seedDemo();
+        localStorage.setItem("frame_one_guide_seen", "1");
+      }
+    } catch {
+      /* storage blocked */
     }
-  }, [seedDemo]);
+  }, [seedDemo, reset]);
 
   // iOS Safari: srcObject alone isn't enough, play() must be called explicitly.
   useEffect(() => {
@@ -515,6 +545,12 @@ export default function App() {
     setStep("map");
   }
 
+  function openProfile() {
+    stopCamera();
+    setJustUnlocked(false);
+    setStep("profile");
+  }
+
   function startOver() {
     setPhotoDataUrl(null);
     setMatch(null);
@@ -586,7 +622,7 @@ export default function App() {
         </div>
 
         <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleFileUpload} />
-        <Dock active="shoot" onShoot={() => {}} onMap={openMap} />
+        <Dock active="shoot" onShoot={() => {}} onMap={openMap} onProfile={openProfile} />
       </div>
     );
   }
@@ -981,9 +1017,13 @@ export default function App() {
         home={place}
         unlocks={unlocks}
         onShoot={startOver}
-        dock={<Dock className="dock-floating" active="map" onShoot={startOver} onMap={() => {}} />}
+        dock={<Dock className="dock-floating" active="map" onShoot={startOver} onMap={() => {}} onProfile={openProfile} />}
       />
     );
+  }
+
+  if (step === "profile") {
+    return <Profile unlocks={unlocks} dock={<Dock className="dock-floating" active="profile" onShoot={startOver} onMap={openMap} onProfile={() => {}} />} />;
   }
 
   return null;

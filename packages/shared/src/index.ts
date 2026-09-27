@@ -145,7 +145,7 @@ export function addUnlock(spotId: string): void {
 
 const SEEDED_KEY = "frame_one_seeded";
 
-/** True once demo stamps were seeded on this device (so clearing stamps later sticks). */
+/** True once demo stamps were seeded (after the first stamp's map tutorial, or ?demo=1). Gates the map's full reveal. */
 export function hasSeededDemo(): boolean {
   try {
     return localStorage.getItem(SEEDED_KEY) === "1";
@@ -175,6 +175,7 @@ export function isUnlocked(spotId: string): boolean {
 export function clearUnlocks(): void {
   try {
     localStorage.removeItem(UNLOCKS_KEY);
+    localStorage.removeItem(SEEDED_KEY);
   } catch {
     // silently ignore
   }
