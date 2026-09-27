@@ -15,7 +15,6 @@ interface MapViewProps {
   saved: SavedStamp | null;
   unlocking: boolean;
   home: { lat: number; lng: number };
-  /** Full array of unlocked spotIds for fog/stamps — wired from shared getUnlocks() */
   unlocks: string[];
   onShoot: () => void;
   dock: ReactNode;
@@ -24,6 +23,7 @@ interface MapViewProps {
 const ZOOM = 12.5;
 const STAMP_HEIGHT = 0.36;
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
+const REVEAL_RADIUS = 180;
 
 const CLAPPER =
   '<svg width="26" height="26" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8.5" width="14" height="8.5" rx="1.5"/><path d="M3 8.5 4.6 4h12.2L17 8.5"/><path d="M7.4 4 6.6 8.5M11.4 4l-.8 4.5M15.2 4l-.8 4.5" stroke-width="1.4"/></svg>';
@@ -46,7 +46,6 @@ const HANDOFF = {
   labelWater: "#274E66",
 };
 
-// Repaints OpenFreeMap's Positron layers in the handoff map palette.
 function paintHandoff(map: MapLibreMap) {
   for (const layer of map.getStyle().layers) {
     const { id, type } = layer;
@@ -69,72 +68,6 @@ function paintHandoff(map: MapLibreMap) {
       map.setPaintProperty(id, "text-halo-color", water ? HANDOFF.water : HANDOFF.land);
     }
   }
-}
-
-type Cloud = { x: number; y: number; s: number; kind: "cumulus" | "stratus"; layer: "back" | "mid" | "front" };
-
-// Reduced cloud count for performance (was 23, now 14)
-const CLOUDS: Cloud[] = [
-  ...[80, 280, 500, 720].map((y, i): Cloud => ({ x: i % 2 ? 220 : 140, y, s: 1.4, kind: "stratus", layer: "back" })),
-  ...(
-    [
-      [-20, 60, 1.4],
-      [180, 180, 1.5],
-      [-40, 340, 1.3],
-      [160, 450, 1.4],
-      [20, 600, 1.5],
-      [-30, 750, 1.3],
-    ] as const
-  ).map(([x, y, s]): Cloud => ({ x, y, s, kind: "cumulus", layer: "mid" })),
-  ...(
-    [
-      [120, 200, 0.75],
-      [60, 420, 0.8],
-      [200, 620, 0.75],
-      [80, 800, 0.8],
-    ] as const
-  ).map(([x, y, s]): Cloud => ({ x, y, s, kind: "cumulus", layer: "front" })),
-];
-
-function Clouds() {
-  return (
-    <svg className="cloud-svg" viewBox="0 0 390 844" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <defs>
-        <linearGradient id="puff" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#FFFFFF" />
-          <stop offset="0.55" stopColor="#F3F6F9" />
-          <stop offset="1" stopColor="#C9D5DF" />
-        </linearGradient>
-        <filter id="cloud-soft" x="-20%" y="-30%" width="140%" height="160%">
-          <feGaussianBlur stdDeviation="0.8" />
-        </filter>
-        <filter id="cloud-blur" x="-30%" y="-60%" width="160%" height="220%">
-          <feGaussianBlur stdDeviation="3" />
-        </filter>
-        <symbol id="cumulus" overflow="visible">
-          <ellipse cx="100" cy="84" rx="94" ry="22" fill="url(#puff)" />
-          <circle cx="50" cy="70" r="30" fill="url(#puff)" />
-          <circle cx="86" cy="50" r="40" fill="url(#puff)" />
-          <circle cx="130" cy="56" r="34" fill="url(#puff)" />
-          <circle cx="164" cy="72" r="24" fill="url(#puff)" />
-        </symbol>
-        <symbol id="stratus" overflow="visible">
-          <ellipse cx="0" cy="0" rx="200" ry="38" fill="url(#puff)" />
-          <ellipse cx="-70" cy="-14" rx="110" ry="30" fill="url(#puff)" />
-          <ellipse cx="80" cy="-10" rx="120" ry="28" fill="url(#puff)" />
-        </symbol>
-      </defs>
-      <rect className="cloud-haze" width="390" height="844" />
-      {CLOUDS.map((c, i) => (
-        <g key={i} transform={`translate(${c.x} ${c.y}) scale(${c.s})`}>
-          <g className={`cloud cloud-${c.layer} from-${i % 2 ? "right" : "left"}`} style={{ "--i": i } as CSSProperties}>
-            {c.kind === "cumulus" && <use href="#cumulus" x="6" y="16" className="cloud-shadow" filter="url(#cloud-blur)" />}
-            <use href={`#${c.kind}`} filter={c.kind === "stratus" ? "url(#cloud-blur)" : "url(#cloud-soft)"} />
-          </g>
-        </g>
-      ))}
-    </svg>
-  );
 }
 
 function StampBadge() {
@@ -160,7 +93,7 @@ function StampBadge() {
 
 export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const cloudsRef = useRef<HTMLDivElement>(null);
+  const greyRef = useRef<HTMLDivElement>(null);
   const [spots, setSpots] = useState<SpotSummary[]>([]);
   const [trailFilter, setTrailFilter] = useState<TrailFilterId>("all");
   const focus = saved ? { lat: saved.match.lat, lng: saved.match.lng } : home;
@@ -213,7 +146,6 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
       new maplibregl.Marker({ element: markerEl(html) }).setLngLat([spot.lng, spot.lat]).addTo(map);
     });
 
-    // Show go-chips only for locked spots (not on unlocked stamps)
     if (!saved && next.length === 0 && filteredSpots.length > 0) {
       const lockedSpots = filteredSpots.filter((s) => !unlocks.includes(s.spotId));
       const goNextSpots = lockedSpots.slice(0, 2);
@@ -233,97 +165,63 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
     }
 
     const unlockedSpots = filteredSpots.filter((s) => unlocks.includes(s.spotId));
-    
-    // Fast gradient (fewer stops) for pan, full soft gradient on idle
-    const buildFastGradient = (x: number, y: number, R: number) =>
-      `radial-gradient(circle at ${x}px ${y}px, transparent 0%, transparent ${R * 0.5}px, #000 ${R}px)`;
-    
-    const buildSoftGradient = (x: number, y: number, R: number, isNewUnlock = false) => {
-      if (isNewUnlock) {
-        return `radial-gradient(circle at ${x}px ${y}px, transparent 0%, transparent calc(var(--fog-r, ${R}px) * 0.42), rgba(0,0,0,0.25) calc(var(--fog-r, ${R}px) * 0.62), rgba(0,0,0,0.7) calc(var(--fog-r, ${R}px) * 0.82), #000 var(--fog-r, ${R}px))`;
+
+    // Simple circle cutout for each unlocked spot (no soft gradient, just hard edge with slight feather)
+    const buildHole = (x: number, y: number, z: number, isNew = false) => {
+      const R = REVEAL_RADIUS * z;
+      const feather = R * 0.15;
+      if (isNew) {
+        return `radial-gradient(circle at ${x}px ${y}px, transparent 0%, transparent calc(var(--reveal-r, ${R}px) - ${feather}px), rgba(128,128,128,0.6) var(--reveal-r, ${R}px))`;
       }
-      return `radial-gradient(circle at ${x}px ${y}px, transparent 0%, transparent ${R * 0.42}px, rgba(0,0,0,0.25) ${R * 0.62}px, rgba(0,0,0,0.7) ${R * 0.82}px, #000 ${R}px)`;
+      return `radial-gradient(circle at ${x}px ${y}px, transparent 0%, transparent ${R - feather}px, rgba(128,128,128,0.6) ${R}px)`;
     };
-    
-    // Collect hole positions for current view
-    const getHolePositions = (useSoft: boolean) => {
+
+    const updateGreyMask = () => {
+      const style = greyRef.current?.style;
+      if (!style) return;
+
       const z = 2 ** (map.getZoom() - ZOOM);
-      const R = 260 * z;
-      const positions: string[] = [];
-      
+      const holes: string[] = [];
+
       if (saved) {
         const p = map.project([focus.lng, focus.lat]);
-        positions.push(useSoft ? buildSoftGradient(p.x, p.y, R, unlocking) : buildFastGradient(p.x, p.y, R));
+        holes.push(buildHole(p.x, p.y, z, unlocking));
       }
-      
+
       unlockedSpots.forEach((s) => {
         if (saved && s.spotId === saved.match.spotId) return;
         const p = map.project([s.lng, s.lat]);
-        positions.push(useSoft ? buildSoftGradient(p.x, p.y, R, false) : buildFastGradient(p.x, p.y, R));
+        holes.push(buildHole(p.x, p.y, z, false));
       });
-      
-      return positions;
-    };
-    
-    const applyMask = (positions: string[]) => {
-      const style = cloudsRef.current?.style;
-      if (positions.length > 0 && style) {
-        style.setProperty("-webkit-mask-image", positions.join(", "));
-        style.setProperty("mask-image", positions.join(", "));
+
+      if (holes.length > 0) {
+        style.setProperty("-webkit-mask-image", holes.join(", "));
+        style.setProperty("mask-image", holes.join(", "));
         style.setProperty("-webkit-mask-composite", "source-in");
         style.setProperty("mask-composite", "intersect");
+      } else {
+        style.removeProperty("-webkit-mask-image");
+        style.removeProperty("mask-image");
       }
     };
-    
-    // Initial render with soft gradient
-    applyMask(getHolePositions(true));
-    
-    // Throttled fast update during pan (150ms)
-    let moveTimer: ReturnType<typeof setTimeout> | null = null;
-    const onMove = () => {
-      if (moveTimer) return;
-      moveTimer = setTimeout(() => {
-        moveTimer = null;
-        applyMask(getHolePositions(false));
-      }, 150);
-    };
-    
-    // Full soft gradient on move end
-    const onMoveEnd = () => {
-      if (moveTimer) { clearTimeout(moveTimer); moveTimer = null; }
-      applyMask(getHolePositions(true));
-    };
-    
-    // Pause cloud animations during drag for performance
-    const onMoveStart = () => el.classList.add("map-dragging");
-    const onIdle = () => el.classList.remove("map-dragging");
-    
-    map.on("movestart", onMoveStart);
-    map.on("move", onMove);
-    map.on("moveend", onMoveEnd);
-    map.on("idle", onIdle);
-    
+
+    updateGreyMask();
+    map.on("moveend", updateGreyMask);
+    map.on("zoomend", updateGreyMask);
+
     return () => {
-      if (moveTimer) clearTimeout(moveTimer);
       map.remove();
     };
   }, [saved, focus.lat, focus.lng, filteredSpots, unlocks, next.length]);
 
-  // Use unlocks.length directly (same source as sheet) - don't rely on spots fetch
-  // Only +1 if saved spot isn't already counted in unlocks[] (during unlock animation)
   const savedAlreadyCounted = saved && unlocks.includes(saved.match.spotId);
   const stampCount = saved && !savedAlreadyCounted ? unlocks.length + 1 : unlocks.length;
-  
-  // For fog holes, still need to filter spots that are actually in catalog
-  const unlockedSpots = spots.filter((s) => unlocks.includes(s.spotId));
-  const hasHoles = unlocks.length > 0 || saved;
+  const hasUnlocks = unlocks.length > 0 || saved;
 
   return (
-    <div className={`screen map-screen${unlocking ? " unlocking" : ""}${hasHoles ? " has-holes" : ""}`}>
+    <div className={`screen map-screen${unlocking ? " unlocking" : ""}${hasUnlocks ? " has-unlocks" : ""}`}>
       <div ref={mapRef} className="map-canvas" />
-      <div ref={cloudsRef} className="cloud-layer">
-        <Clouds />
-      </div>
+      <div ref={greyRef} className="grey-overlay" />
 
       <div className="map-header">
         <span className="map-title">New York</span>
@@ -415,7 +313,7 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
         ) : (
           <div className="sheet-empty">
             <div className="sheet-title">Nothing stamped yet</div>
-            <p className="sheet-meta">Shoot a place you've seen in a film to clear the clouds.</p>
+            <p className="sheet-meta">Shoot a place you've seen in a film to reveal the map.</p>
             <button type="button" className="primary-button" onClick={onShoot}>
               Start shooting
             </button>

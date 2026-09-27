@@ -1135,83 +1135,34 @@ figure {
   animation: chip-pop 380ms var(--ease-pop) both;
 }
 
-.cloud-layer {
+/* === GREY OVERLAY (replaces cloud fog) === */
+.grey-overlay {
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  will-change: mask-image;
-  contain: strict;
+  background: rgba(128, 128, 128, 0.6);
 }
 
-/* Soft mist mask composite for multiple holes */
-.has-holes .cloud-layer {
+/* When unlocks exist, mask shows through as holes */
+.has-unlocks .grey-overlay {
   -webkit-mask-composite: source-in;
   mask-composite: intersect;
 }
 
-/* Unlock dissolve animation - mist thins over 1.4s */
-.unlocking .cloud-layer {
-  animation: mist-open 1400ms var(--ease-out) var(--reveal) both;
-  filter: blur(1px);
+/* Unlock reveal animation */
+.unlocking .grey-overlay {
+  --reveal-r: 0px;
+  animation: reveal-open 1200ms var(--ease-out) var(--reveal) forwards;
 }
 
-/* Remove blur after unlock animation completes */
-.has-holes:not(.unlocking) .cloud-layer {
-  filter: none;
-}
-
-.cloud-svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  will-change: transform;
-}
-
-/* Pause cloud animations during map drag for performance */
-.map-dragging .cloud-svg,
-.map-dragging .cloud,
-.map-dragging .cloud-haze {
-  animation-play-state: paused !important;
-}
-
-.cloud-haze {
-  fill: #eef3f7;
-  opacity: 0;
-  animation: haze-in 1400ms ease-out var(--cloud-delay) forwards;
-}
-
-/* Slightly denser static mist */
-@keyframes haze-in {
-  to {
-    opacity: 0.5;
+@keyframes reveal-open {
+  from {
+    --reveal-r: 0px;
   }
-}
-
-.cloud-shadow {
-  opacity: 0.22;
-  fill: #5f7486;
-}
-
-.cloud {
-  --drift: 38s;
-  animation:
-    cloud-in-left 1800ms var(--ease-out) calc(var(--cloud-delay) + var(--i) * 50ms) both,
-    cloud-drift var(--drift) ease-in-out calc(var(--cloud-delay) + 1800ms + var(--i) * 50ms) infinite alternate;
-}
-
-.cloud.from-right {
-  animation-name: cloud-in-right, cloud-drift;
-}
-
-.cloud-back {
-  --drift: 60s;
-  opacity: 0.9;
-}
-
-.cloud-front {
-  --drift: 26s;
+  to {
+    --reveal-r: 180px;
+  }
 }
 
 .osm-attribution {
@@ -1544,27 +1495,6 @@ figure {
   }
 }
 
-/* Mist dissolve animation - fog thins from center outward */
-@keyframes mist-open {
-  0% {
-    --fog-r: 0px;
-    --fog-feather: 0;
-  }
-  100% {
-    --fog-r: 260px;
-    --fog-feather: 1;
-  }
-}
-
-/* Legacy fallback */
-@keyframes hole-open {
-  from {
-    --fog-r: 0px;
-  }
-  to {
-    --fog-r: 260px;
-  }
-}
 
 @keyframes stampdrop {
   0% {
@@ -1613,36 +1543,6 @@ figure {
   }
 }
 
-/* Removed duplicate - see updated haze-in above with opacity: 0.5 */
-
-@keyframes cloud-in-left {
-  from {
-    opacity: 0;
-    transform: translateX(-90px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes cloud-in-right {
-  from {
-    opacity: 0;
-    transform: translateX(90px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes cloud-drift {
-  to {
-    transform: translateX(16px);
-  }
-}
-
 @keyframes chip-pop {
   from {
     opacity: 0;
@@ -1656,9 +1556,7 @@ figure {
 
 /* === REDUCED MOTION === */
 @media (prefers-reduced-motion: reduce) {
-  .cloud-layer,
-  .cloud,
-  .cloud-haze,
+  .grey-overlay,
   .stamp-pin,
   .peek-pin,
   .go-chip,
@@ -1667,13 +1565,5 @@ figure {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-  }
-  
-  .unlocking .cloud-layer {
-    filter: none;
-  }
-  
-  .cloud {
-    animation: none;
   }
 }
