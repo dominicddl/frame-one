@@ -108,6 +108,12 @@ function StampBadge() {
   );
 }
 
+// Open directions to a location via Google Maps
+function openDirections(lat: number, lng: number) {
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+  window.open(url, "_blank", "noopener");
+}
+
 export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const greyRef = useRef<HTMLDivElement>(null);
@@ -148,8 +154,10 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
       const stamp = `<div class="stamp-pin"><span class="stamp-ripple"></span><span class="stamp-face">${stampArt}</span></div>`;
       new maplibregl.Marker({ element: markerEl(stamp) }).setLngLat([focus.lng, focus.lat]).addTo(map);
       saved.match.goNext.forEach((item, i) => {
-        const pin = `<div class="next-pin" style="animation-delay: calc(var(--reveal) + ${600 + i * 90}ms)">${PEEK_SVG}</div>`;
-        new maplibregl.Marker({ element: markerEl(pin) }).setLngLat([item.lng, item.lat]).addTo(map);
+        const pinEl = markerEl(`<div class="next-pin" style="animation-delay: calc(var(--reveal) + ${600 + i * 90}ms)">${PEEK_SVG}</div>`);
+        pinEl.style.cursor = "pointer";
+        pinEl.addEventListener("click", () => openDirections(item.lat, item.lng));
+        new maplibregl.Marker({ element: pinEl }).setLngLat([item.lng, item.lat]).addTo(map);
       });
     }
 
@@ -158,10 +166,15 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
       const isSaved = saved && saved.match.spotId === spot.spotId;
       if (isSaved) return;
 
-      const html = isUnlocked
-        ? `<div class="stamp-pin unlocked-stamp"><span class="stamp-face">${getStampArt(spot.spotId)}</span></div>`
-        : `<div class="peek-pin">${PEEK_SVG}</div>`;
-      new maplibregl.Marker({ element: markerEl(html) }).setLngLat([spot.lng, spot.lat]).addTo(map);
+      if (isUnlocked) {
+        const stampEl = markerEl(`<div class="stamp-pin unlocked-stamp"><span class="stamp-face">${getStampArt(spot.spotId)}</span></div>`);
+        new maplibregl.Marker({ element: stampEl }).setLngLat([spot.lng, spot.lat]).addTo(map);
+      } else {
+        const peekEl = markerEl(`<div class="peek-pin">${PEEK_SVG}</div>`);
+        peekEl.style.cursor = "pointer";
+        peekEl.addEventListener("click", () => openDirections(spot.lat, spot.lng));
+        new maplibregl.Marker({ element: peekEl }).setLngLat([spot.lng, spot.lat]).addTo(map);
+      }
     });
 
     if (!saved && next.length === 0 && filteredSpots.length > 0) {
@@ -307,13 +320,18 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
                 {next.map((item) => {
                   const [film, area] = item.label.split(" — ");
                   return (
-                    <div key={item.spotId} className="go-next-item">
+                    <button
+                      key={item.spotId}
+                      type="button"
+                      className="go-next-item"
+                      onClick={() => openDirections(item.lat, item.lng)}
+                    >
                       <span className="go-next-q">?</span>
                       <span className="go-next-text">
                         <span className="go-next-film">{film}</span>
                         {area && <span className="go-next-area">{area}</span>}
                       </span>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
