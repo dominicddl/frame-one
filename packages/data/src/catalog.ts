@@ -7,6 +7,7 @@ export interface CatalogSpot extends Spot {
   sceneName: string;
   mergeRadiusM: number;
   active: boolean;
+  youtubeSceneUrl?: string;
   matchingAssets?: {
     still: { url: string; width: number; height: number; mimeType: string; sha256: string; source: string; rightsStatus: string };
     vantage: {

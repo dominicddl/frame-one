@@ -8,6 +8,7 @@
     "neighbourhood": "Times Square",
     "stillUrl": "/assets/spots/tasm2-red-steps/still.png",
     "vantageUrl": "/assets/spots/tasm2-red-steps/vantage.jpg",
+    "youtubeSceneUrl": "https://www.youtube.com/watch?v=Xsp3_a-PMTw",
     "keywords": [
       "spider-man",
       "spiderman",
@@ -15,7 +16,9 @@
       "tasm",
       "red steps",
       "times square",
-      "electro"
+      "electro",
+      "tkts",
+      "duffy square"
     ],
     "sceneName": "Times Square Electro Fight",
     "mergeRadiusM": 120,
@@ -160,7 +163,7 @@
       "flash mob"
     ],
     "mergeRadiusM": 150,
-    "active": true,
+    "active": false,
     "matchingAssets": {
       "still": {
         "url": "/assets/spots/friends-benefits-grand-central/still.png",
@@ -204,11 +207,14 @@
     "neighbourhood": "Midtown",
     "stillUrl": "/assets/spots/home-alone-radio-city/still.png",
     "vantageUrl": "/assets/spots/home-alone-radio-city/vantage.jpg",
+    "youtubeSceneUrl": "https://www.youtube.com/watch?v=EYR_zJ6QSis",
     "keywords": [
       "home alone",
       "home alone 2",
       "kevin",
-      "radio city"
+      "radio city",
+      "radio city music hall",
+      "rockefeller center"
     ],
     "mergeRadiusM": 150,
     "active": true,
@@ -308,12 +314,15 @@
     "neighbourhood": "Highbridge, Bronx",
     "stillUrl": "/assets/spots/joker-bronx-stairs/still.jpg",
     "vantageUrl": "/assets/spots/joker-bronx-stairs/vantage.jpg",
+    "youtubeSceneUrl": "https://www.youtube.com/watch?v=t433PEQGErc",
     "keywords": [
       "joker",
       "stairs",
       "staircase",
       "bronx",
-      "shakespeare avenue"
+      "shakespeare avenue",
+      "joker stairs",
+      "arthur fleck"
     ],
     "mergeRadiusM": 150,
     "active": true,
@@ -472,6 +481,53 @@
       "central park",
       "arcade",
       "dog"
+    ],
+    "mergeRadiusM": 150,
+    "active": true
+  },
+  {
+    "spotId": "cap-america-times-square",
+    "filmTitle": "Captain America: The First Avenger",
+    "year": 2011,
+    "sceneName": "Steve Rogers Wakes in Modern Times Square",
+    "lat": 40.758,
+    "lng": -73.9855,
+    "neighbourhood": "Times Square",
+    "stillUrl": "/assets/spots/cap-america-times-square/still.svg",
+    "vantageUrl": "/assets/spots/cap-america-times-square/vantage.svg",
+    "youtubeSceneUrl": "https://www.youtube.com/watch?v=Fc92T7X9WXM",
+    "keywords": [
+      "captain america",
+      "cap",
+      "steve rogers",
+      "avengers",
+      "times square",
+      "tkts",
+      "duffy square",
+      "marvel",
+      "first avenger"
+    ],
+    "mergeRadiusM": 120,
+    "active": true
+  },
+  {
+    "spotId": "friends-benefits-central-park-mall",
+    "filmTitle": "Friends with Benefits",
+    "year": 2011,
+    "sceneName": "The Mall Elm Canopy Walk",
+    "lat": 40.7724,
+    "lng": -73.9712,
+    "neighbourhood": "Central Park",
+    "stillUrl": "/assets/spots/friends-benefits-central-park-mall/still.svg",
+    "vantageUrl": "/assets/spots/friends-benefits-central-park-mall/vantage.svg",
+    "youtubeSceneUrl": "https://www.youtube.com/watch?v=lGMeJx8cfJM",
+    "keywords": [
+      "friends with benefits",
+      "central park",
+      "the mall",
+      "elm trees",
+      "literary walk",
+      "fwb"
     ],
     "mergeRadiusM": 150,
     "active": true
