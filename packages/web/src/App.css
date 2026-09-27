@@ -1279,10 +1279,10 @@ figure {
   background: rgba(28, 28, 30, 0.72);
 }
 
-/* Multi-unlock holes: intersect gives UNION of transparent regions (all holes visible) */
+/* Multi-unlock holes: destination-out/exclude punches holes (QA-passed on f735213) */
 .has-unlocks .grey-overlay {
-  -webkit-mask-composite: source-in;
-  mask-composite: intersect;
+  -webkit-mask-composite: destination-out;
+  mask-composite: exclude;
 }
 
 /* Unlock reveal animation */

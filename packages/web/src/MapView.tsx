@@ -240,19 +240,19 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
 
     const unlockedSpots = filteredSpots.filter((s) => unlocks.includes(s.spotId));
 
-    // Build hole gradient for multi-unlock mask
-    // Each gradient: transparent at center (hole), black at edge
-    // With intersect composite: result is transparent where ANY gradient is transparent
+    // Build hole gradient for multi-unlock mask (QA-passed destination-out approach)
+    // Each gradient: black at center (hole), transparent at edge
+    // With exclude/destination-out: black regions punch holes in grey overlay
     // BRIEF: R=84px, feather=12px, rgba(28,28,30,0.72)
     const buildHole = (x: number, y: number, z: number, isNew = false) => {
       const R = REVEAL_RADIUS * z;
       const feather = REVEAL_FEATHER * z;
       if (isNew) {
         // Animated reveal: use CSS var for radius
-        return `radial-gradient(circle at ${x}px ${y}px, transparent 0%, transparent calc(var(--reveal-r, ${R}px) - ${feather}px), black var(--reveal-r, ${R}px))`;
+        return `radial-gradient(circle at ${x}px ${y}px, black 0%, black calc(var(--reveal-r, ${R}px) - ${feather}px), transparent var(--reveal-r, ${R}px))`;
       }
-      // Static hole: transparent center → black edge
-      return `radial-gradient(circle at ${x}px ${y}px, transparent 0%, transparent ${R - feather}px, black ${R}px)`;
+      // Static hole: black center → transparent edge
+      return `radial-gradient(circle at ${x}px ${y}px, black 0%, black ${R - feather}px, transparent ${R}px)`;
     };
 
     const updateGreyMask = () => {
@@ -274,12 +274,12 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
       });
 
       if (holes.length > 0) {
-        // Multiple gradients with intersect: transparent = hole, black = grey shows
-        // intersect gives UNION of all transparent regions (all holes visible)
+        // QA-passed: destination-out/exclude with black→transparent gradients
+        // Black regions punch holes, showing map through grey overlay
         style.setProperty("-webkit-mask-image", holes.join(", "));
         style.setProperty("mask-image", holes.join(", "));
-        style.setProperty("-webkit-mask-composite", "source-in");
-        style.setProperty("mask-composite", "intersect");
+        style.setProperty("-webkit-mask-composite", "destination-out");
+        style.setProperty("mask-composite", "exclude");
       } else {
         style.removeProperty("-webkit-mask-image");
         style.removeProperty("mask-image");
