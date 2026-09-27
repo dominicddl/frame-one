@@ -27,6 +27,18 @@ export interface GoNextItem {
   lng: number;
 }
 
+/** Soft-miss suggestion when match confidence is low */
+export interface SoftMissSuggestion {
+  spotId: string;
+  filmTitle: string;
+  neighbourhood: string;
+  distanceM: number;
+  reason: "nearby" | "same-neighbourhood" | "same-film";
+}
+
+/** Match confidence level for web to determine UI behavior */
+export type MatchConfidence = "high" | "medium" | "low";
+
 /** POST /api/match response — always a match */
 export interface MatchResponse {
   spotId: string;
@@ -38,4 +50,8 @@ export interface MatchResponse {
   vantageUrl: string;
   mergeOk: boolean;
   goNext: GoNextItem[];
+  /** Match confidence - web can show alternative suggestions when low */
+  matchConfidence?: MatchConfidence;
+  /** Curated alternatives when matchConfidence is low; prefer these over barren miss UI */
+  suggestions?: SoftMissSuggestion[];
 }

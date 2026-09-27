@@ -1,14 +1,25 @@
+import path from "path";
+import dotenv from "dotenv";
+
+const envPath = path.resolve(__dirname, "..", "..", "..", ".env.local");
+dotenv.config({ path: envPath });
+if (!process.env.OPENAI_API_KEY) {
+  const fallbackEnv = path.resolve(__dirname, "..", "..", "..", ".env");
+  dotenv.config({ path: fallbackEnv });
+}
+
 import express from "express";
 import cors from "cors";
-import path from "path";
 import fs from "fs";
-import type { Spot, MatchRequest, MatchResponse, GoNextItem } from "@frame-one/shared";
+import type { Spot, MatchRequest, MatchResponse, GoNextItem, SoftMissSuggestion, MatchConfidence } from "@frame-one/shared";
 import { hasVisionApiKey, getVisionModelInfo } from "./vision-openai";
 import { retrieveSpotByPhoto } from "./retrieve";
 
 const PORT = Number(process.env.PORT) || 3001;
 const MERGE_OK_METERS = 150;
 const MERGE_OK_RETRIEVAL_SCORE = 60;
+const LOW_CONFIDENCE_THRESHOLD = 50;
+const NEARBY_SUGGESTION_RADIUS_M = 2000;
 
 const app = express();
 app.use(cors());
@@ -96,6 +107,71 @@ function buildGoNext(matched: Spot): GoNextItem[] {
     .map(({ distance, ...item }) => item);
 }
 
+function buildSoftMissSuggestions(
+  matched: Spot,
+  userLat: number,
+  userLng: number
+): SoftMissSuggestion[] {
+  const suggestions: SoftMissSuggestion[] = [];
+  const seen = new Set<string>([matched.spotId]);
+
+  const candidatesWithDist = spots
+    .filter((s) => s.spotId !== matched.spotId)
+    .map((s) => ({
+      spot: s,
+      distanceM: distanceMeters(userLat, userLng, s.lat, s.lng),
+    }));
+
+  const nearby = candidatesWithDist
+    .filter((c) => c.distanceM <= NEARBY_SUGGESTION_RADIUS_M)
+    .sort((a, b) => a.distanceM - b.distanceM);
+
+  for (const { spot, distanceM } of nearby.slice(0, 2)) {
+    if (!seen.has(spot.spotId)) {
+      seen.add(spot.spotId);
+      suggestions.push({
+        spotId: spot.spotId,
+        filmTitle: spot.filmTitle,
+        neighbourhood: spot.neighbourhood,
+        distanceM: Math.round(distanceM),
+        reason: "nearby",
+      });
+    }
+  }
+
+  const sameNeighbourhood = candidatesWithDist
+    .filter((c) => c.spot.neighbourhood === matched.neighbourhood && !seen.has(c.spot.spotId))
+    .sort((a, b) => a.distanceM - b.distanceM);
+
+  for (const { spot, distanceM } of sameNeighbourhood.slice(0, 1)) {
+    seen.add(spot.spotId);
+    suggestions.push({
+      spotId: spot.spotId,
+      filmTitle: spot.filmTitle,
+      neighbourhood: spot.neighbourhood,
+      distanceM: Math.round(distanceM),
+      reason: "same-neighbourhood",
+    });
+  }
+
+  const sameFilm = candidatesWithDist
+    .filter((c) => c.spot.filmTitle === matched.filmTitle && !seen.has(c.spot.spotId))
+    .sort((a, b) => a.distanceM - b.distanceM);
+
+  for (const { spot, distanceM } of sameFilm.slice(0, 1)) {
+    seen.add(spot.spotId);
+    suggestions.push({
+      spotId: spot.spotId,
+      filmTitle: spot.filmTitle,
+      neighbourhood: spot.neighbourhood,
+      distanceM: Math.round(distanceM),
+      reason: "same-film",
+    });
+  }
+
+  return suggestions.slice(0, 3);
+}
+
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, service: "frame-one-match", spots: spots.length });
 });
@@ -127,7 +203,6 @@ app.post("/api/match", async (req, res) => {
 
   const candidates = filterCandidatesByQuery(body.movieQuery);
   
-  // Prefer matching catalog candidates when available for photo retrieval
   const photoCandidates = candidateSpotIds.length > 0 && body.photoDataUrl
     ? candidates.filter(s => candidateSpotIds.includes(s.spotId))
     : candidates;
@@ -135,8 +210,11 @@ app.post("/api/match", async (req, res) => {
   let spot: Spot;
   let mergeOk = false;
   let retrievalScore: number | undefined;
+  let matchConfidence: MatchConfidence = "low";
+  let usedVision = false;
 
   if (body.photoDataUrl && hasVisionApiKey()) {
+    usedVision = true;
     console.log(
       `[match] Photo provided with API key; using retrieval-first (${photoCandidates.length} photo candidates from ${candidates.length} total)`
     );
@@ -152,6 +230,7 @@ app.post("/api/match", async (req, res) => {
       if (matchedSpot) {
         spot = matchedSpot;
         retrievalScore = retrievalResult.score;
+        matchConfidence = retrievalResult.confidence;
         
         mergeOk = retrievalResult.score >= MERGE_OK_RETRIEVAL_SCORE;
         
@@ -161,7 +240,7 @@ app.post("/api/match", async (req, res) => {
         }
 
         console.log(
-          `[match] Retrieval matched ${spot.spotId} (score: ${retrievalScore}, confidence: ${retrievalResult.confidence}, mergeOk: ${mergeOk})`
+          `[match] Retrieval matched ${spot.spotId} (score: ${retrievalScore}, confidence: ${matchConfidence}, mergeOk: ${mergeOk})`
         );
       } else {
         console.log(
@@ -170,12 +249,14 @@ app.post("/api/match", async (req, res) => {
         spot = pickSpotByGps(candidates, lat, lng);
         const dist = distanceMeters(lat, lng, spot.lat, spot.lng);
         mergeOk = dist <= MERGE_OK_METERS;
+        matchConfidence = mergeOk ? "medium" : "low";
       }
     } else {
       console.log("[match] Retrieval returned no result; falling back to GPS");
       spot = pickSpotByGps(candidates, lat, lng);
       const dist = distanceMeters(lat, lng, spot.lat, spot.lng);
       mergeOk = dist <= MERGE_OK_METERS;
+      matchConfidence = mergeOk ? "medium" : "low";
     }
   } else {
     if (body.photoDataUrl) {
@@ -187,6 +268,7 @@ app.post("/api/match", async (req, res) => {
     spot = pickSpotByGps(candidates, lat, lng);
     const dist = distanceMeters(lat, lng, spot.lat, spot.lng);
     mergeOk = dist <= MERGE_OK_METERS;
+    matchConfidence = mergeOk ? "high" : "medium";
   }
 
   const response: MatchResponse = {
@@ -199,7 +281,15 @@ app.post("/api/match", async (req, res) => {
     vantageUrl: spot.vantageUrl,
     mergeOk,
     goNext: buildGoNext(spot),
+    matchConfidence,
   };
+
+  if (matchConfidence === "low" || (usedVision && retrievalScore !== undefined && retrievalScore < LOW_CONFIDENCE_THRESHOLD)) {
+    response.suggestions = buildSoftMissSuggestions(spot, lat, lng);
+    console.log(
+      `[match] Low confidence match; providing ${response.suggestions.length} soft-miss suggestions`
+    );
+  }
 
   res.json(response);
 });

@@ -11,6 +11,7 @@
   "dependencies": {
     "@frame-one/shared": "*",
     "cors": "^2.8.5",
+    "dotenv": "^18.0.4",
     "express": "^4.21.2"
   },
   "devDependencies": {
