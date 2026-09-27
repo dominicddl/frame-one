@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 112" width="112" height="112" role="img" aria-label="Kevin stamp">
+  <defs>
+    <clipPath id="clip-kevin"><circle cx="56" cy="56" r="50"/></clipPath>
+  </defs>
+  <circle cx="56" cy="56" r="53.5" fill="none" stroke="#e87a2a" stroke-width="5"/>
+  <circle cx="56" cy="56" r="50" fill="#f7f1ea"/>
+  <g clip-path="url(#clip-kevin)">
+    <!-- Face -->
+    <ellipse cx="56" cy="54" rx="20" ry="22" fill="#e8c4a8"/>
+    <!-- Beanie -->
+    <path d="M34 48 Q34 28 56 26 Q78 28 78 48 L78 52 Q56 48 34 52 Z" fill="#2a241f"/>
+    <ellipse cx="56" cy="28" rx="7" ry="5" fill="#e87a2a"/>
+    <!-- Eyes wide -->
+    <circle cx="48" cy="54" r="3.2" fill="#2a241f"/>
+    <circle cx="64" cy="54" r="3.2" fill="#2a241f"/>
+    <!-- Open mouth O -->
+    <ellipse cx="56" cy="66" rx="5" ry="6" fill="#2a241f"/>
+    <!-- Scarf -->
+    <path d="M38 74 Q56 70 74 74 L78 88 Q56 92 34 88 Z" fill="#c62828"/>
+    <rect x="62" y="78" width="10" height="28" rx="3" fill="#c62828"/>
+    <rect x="62" y="100" width="10" height="6" rx="2" fill="#f7f1ea" opacity="0.7"/>
+  </g>
+</svg>

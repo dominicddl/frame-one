@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 112" width="112" height="112" role="img" aria-label="Spidey stamp">
+  <defs>
+    <clipPath id="clip-tasm"><circle cx="56" cy="56" r="50"/></clipPath>
+  </defs>
+  <circle cx="56" cy="56" r="53.5" fill="none" stroke="#e87a2a" stroke-width="5"/>
+  <circle cx="56" cy="56" r="50" fill="#2a241f"/>
+  <g clip-path="url(#clip-tasm)">
+    <!-- Head / mask oval -->
+    <ellipse cx="56" cy="48" rx="22" ry="26" fill="#c62828"/>
+    <!-- Eye lenses -->
+    <ellipse cx="47" cy="46" rx="8" ry="10" fill="#90caf9" transform="rotate(-12 47 46)"/>
+    <ellipse cx="65" cy="46" rx="8" ry="10" fill="#90caf9" transform="rotate(12 65 46)"/>
+    <ellipse cx="47" cy="46" rx="4.5" ry="6" fill="#1565c0" transform="rotate(-12 47 46)"/>
+    <ellipse cx="65" cy="46" rx="4.5" ry="6" fill="#1565c0" transform="rotate(12 65 46)"/>
+    <!-- Web hint lines (subtle) -->
+    <path d="M56 28 L56 74 M40 40 L72 56 M72 40 L40 56" fill="none" stroke="#8b1a1a" stroke-width="1.2" opacity="0.55"/>
+    <!-- Shoulders / torso suggestion -->
+    <path d="M34 78 Q56 68 78 78 L78 112 L34 112 Z" fill="#1565c0"/>
+    <path d="M44 78 Q56 72 68 78 L68 112 L44 112 Z" fill="#c62828"/>
+  </g>
+</svg>
