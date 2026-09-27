@@ -73,30 +73,25 @@ function paintHandoff(map: MapLibreMap) {
 
 type Cloud = { x: number; y: number; s: number; kind: "cumulus" | "stratus"; layer: "back" | "mid" | "front" };
 
+// Reduced cloud count for performance (was 23, now 14)
 const CLOUDS: Cloud[] = [
-  ...[40, 170, 300, 430, 560, 690, 820].map((y, i): Cloud => ({ x: i % 2 ? 250 : 120, y, s: 1.3, kind: "stratus", layer: "back" })),
+  ...[80, 280, 500, 720].map((y, i): Cloud => ({ x: i % 2 ? 220 : 140, y, s: 1.4, kind: "stratus", layer: "back" })),
   ...(
     [
-      [-40, -20, 1.5],
-      [170, 30, 1.3],
-      [-20, 150, 1.4],
-      [190, 200, 1.5],
-      [40, 290, 1.2],
-      [-60, 380, 1.5],
-      [180, 410, 1.4],
-      [20, 520, 1.3],
-      [200, 570, 1.2],
-      [-40, 660, 1.5],
-      [160, 720, 1.4],
+      [-20, 60, 1.4],
+      [180, 180, 1.5],
+      [-40, 340, 1.3],
+      [160, 450, 1.4],
+      [20, 600, 1.5],
+      [-30, 750, 1.3],
     ] as const
   ).map(([x, y, s]): Cloud => ({ x, y, s, kind: "cumulus", layer: "mid" })),
   ...(
     [
-      [100, 100, 0.8],
-      [250, 340, 0.7],
-      [60, 470, 0.8],
-      [260, 640, 0.7],
-      [120, 790, 0.8],
+      [120, 200, 0.75],
+      [60, 420, 0.8],
+      [200, 620, 0.75],
+      [80, 800, 0.8],
     ] as const
   ).map(([x, y, s]): Cloud => ({ x, y, s, kind: "cumulus", layer: "front" })),
 ];
@@ -111,10 +106,10 @@ function Clouds() {
           <stop offset="1" stopColor="#C9D5DF" />
         </linearGradient>
         <filter id="cloud-soft" x="-20%" y="-30%" width="140%" height="160%">
-          <feGaussianBlur stdDeviation="1.6" />
+          <feGaussianBlur stdDeviation="0.8" />
         </filter>
         <filter id="cloud-blur" x="-30%" y="-60%" width="160%" height="220%">
-          <feGaussianBlur stdDeviation="7" />
+          <feGaussianBlur stdDeviation="3" />
         </filter>
         <symbol id="cumulus" overflow="visible">
           <ellipse cx="100" cy="84" rx="94" ry="22" fill="url(#puff)" />
@@ -239,53 +234,77 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
 
     const unlockedSpots = filteredSpots.filter((s) => unlocks.includes(s.spotId));
     
-    // Soft mist gradient builder - wider softer ramp for warm fog feel
-    const buildMistGradient = (x: number, y: number, z: number, isNewUnlock = false) => {
-      const R = 260 * z; // Wider radius for softer feel
+    // Fast gradient (fewer stops) for pan, full soft gradient on idle
+    const buildFastGradient = (x: number, y: number, R: number) =>
+      `radial-gradient(circle at ${x}px ${y}px, transparent 0%, transparent ${R * 0.5}px, #000 ${R}px)`;
+    
+    const buildSoftGradient = (x: number, y: number, R: number, isNewUnlock = false) => {
       if (isNewUnlock) {
-        // During unlock animation, use CSS variable for animated feather
         return `radial-gradient(circle at ${x}px ${y}px, transparent 0%, transparent calc(var(--fog-r, ${R}px) * 0.42), rgba(0,0,0,0.25) calc(var(--fog-r, ${R}px) * 0.62), rgba(0,0,0,0.7) calc(var(--fog-r, ${R}px) * 0.82), #000 var(--fog-r, ${R}px))`;
       }
-      // Static soft mist gradient
-      return `radial-gradient(circle at ${x}px ${y}px, transparent 0%, transparent calc(${R}px * 0.42), rgba(0,0,0,0.25) calc(${R}px * 0.62), rgba(0,0,0,0.7) calc(${R}px * 0.82), #000 ${R}px)`;
+      return `radial-gradient(circle at ${x}px ${y}px, transparent 0%, transparent ${R * 0.42}px, rgba(0,0,0,0.25) ${R * 0.62}px, rgba(0,0,0,0.7) ${R * 0.82}px, #000 ${R}px)`;
     };
     
-    // Throttled fog hole tracking to reduce phone lag
-    let trackPending = false;
-    const trackHoles = () => {
-      if (trackPending) return;
-      trackPending = true;
-      requestAnimationFrame(() => {
-        trackPending = false;
-        const z = 2 ** (map.getZoom() - ZOOM);
-        const positions: string[] = [];
-        
-        // Add saved spot first (newest unlock during .unlocking)
-        if (saved) {
-          const p = map.project([focus.lng, focus.lat]);
-          positions.push(buildMistGradient(p.x, p.y, z, unlocking));
-        }
-        
-        // Add existing unlocked spots (static mist)
-        unlockedSpots.forEach((s) => {
-          // Skip if this is the saved spot (already added above)
-          if (saved && s.spotId === saved.match.spotId) return;
-          const p = map.project([s.lng, s.lat]);
-          positions.push(buildMistGradient(p.x, p.y, z, false));
-        });
-
-        const style = cloudsRef.current?.style;
-        if (positions.length > 0) {
-          style?.setProperty("-webkit-mask-image", positions.join(", "));
-          style?.setProperty("mask-image", positions.join(", "));
-          style?.setProperty("-webkit-mask-composite", "source-in");
-          style?.setProperty("mask-composite", "intersect");
-        }
+    // Collect hole positions for current view
+    const getHolePositions = (useSoft: boolean) => {
+      const z = 2 ** (map.getZoom() - ZOOM);
+      const R = 260 * z;
+      const positions: string[] = [];
+      
+      if (saved) {
+        const p = map.project([focus.lng, focus.lat]);
+        positions.push(useSoft ? buildSoftGradient(p.x, p.y, R, unlocking) : buildFastGradient(p.x, p.y, R));
+      }
+      
+      unlockedSpots.forEach((s) => {
+        if (saved && s.spotId === saved.match.spotId) return;
+        const p = map.project([s.lng, s.lat]);
+        positions.push(useSoft ? buildSoftGradient(p.x, p.y, R, false) : buildFastGradient(p.x, p.y, R));
       });
+      
+      return positions;
     };
-    trackHoles();
-    map.on("move", trackHoles);
+    
+    const applyMask = (positions: string[]) => {
+      const style = cloudsRef.current?.style;
+      if (positions.length > 0 && style) {
+        style.setProperty("-webkit-mask-image", positions.join(", "));
+        style.setProperty("mask-image", positions.join(", "));
+        style.setProperty("-webkit-mask-composite", "source-in");
+        style.setProperty("mask-composite", "intersect");
+      }
+    };
+    
+    // Initial render with soft gradient
+    applyMask(getHolePositions(true));
+    
+    // Throttled fast update during pan (150ms)
+    let moveTimer: ReturnType<typeof setTimeout> | null = null;
+    const onMove = () => {
+      if (moveTimer) return;
+      moveTimer = setTimeout(() => {
+        moveTimer = null;
+        applyMask(getHolePositions(false));
+      }, 150);
+    };
+    
+    // Full soft gradient on move end
+    const onMoveEnd = () => {
+      if (moveTimer) { clearTimeout(moveTimer); moveTimer = null; }
+      applyMask(getHolePositions(true));
+    };
+    
+    // Pause cloud animations during drag for performance
+    const onMoveStart = () => el.classList.add("map-dragging");
+    const onIdle = () => el.classList.remove("map-dragging");
+    
+    map.on("movestart", onMoveStart);
+    map.on("move", onMove);
+    map.on("moveend", onMoveEnd);
+    map.on("idle", onIdle);
+    
     return () => {
+      if (moveTimer) clearTimeout(moveTimer);
       map.remove();
     };
   }, [saved, focus.lat, focus.lng, filteredSpots, unlocks, next.length]);
