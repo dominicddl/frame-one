@@ -341,6 +341,76 @@ interface GeocodeSuggestion {
   lng: number;
 }
 
+const GEOCODE_TIMEOUT_MS = 4000;
+// Rough NYC bounds; Photon has no hard bbox, so filter to keep "grand central" in Manhattan.
+const NYC = { south: 40.45, north: 41.0, west: -74.3, east: -73.65 };
+const inNyc = (lat: number, lng: number) =>
+  lat >= NYC.south && lat <= NYC.north && lng >= NYC.west && lng <= NYC.east;
+
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+// Catalog spots whose keywords/scene/film/neighbourhood match the query. Works with no network.
+function searchCatalog(query: string, catalog: (Spot & { sceneName?: string })[]): GeocodeSuggestion[] {
+  const q = norm(query);
+  if (!q) return [];
+  const words = q.split(" ");
+  return catalog
+    .map((s) => {
+      const fields = [...(s.keywords || []), s.sceneName, s.filmTitle, s.neighbourhood, s.spotId.replace(/-/g, " ")]
+        .filter(Boolean)
+        .map((f) => norm(String(f)));
+      // Best: a field contains the whole query or vice versa ("radio city music hall" ⊇ "radio city").
+      const phrase = fields.some((f) => f.includes(q) || (f.length > 3 && q.includes(f)));
+      const hay = fields.join(" ");
+      const hits = words.filter((w) => w.length > 1 && hay.includes(w)).length;
+      const score = phrase ? 100 + hits : hits / words.length >= 0.6 ? hits : 0;
+      return { s, score };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .map(({ s }) => ({ name: s.sceneName ? `${s.sceneName} · ${s.neighbourhood}` : s.neighbourhood, lat: s.lat, lng: s.lng }));
+}
+
+async function nominatim(query: string): Promise<GeocodeSuggestion[]> {
+  const params = new URLSearchParams({
+    q: query,
+    format: "json",
+    limit: "6",
+    viewbox: "-74.05,40.9,-73.85,40.65",
+    bounded: "1",
+    countrycodes: "us",
+  });
+  const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+    headers: { "User-Agent": "FrameOne/1.0 (https://frame-one.onrender.com)", Accept: "application/json" },
+    signal: AbortSignal.timeout(GEOCODE_TIMEOUT_MS),
+  });
+  if (!response.ok) throw new Error(`Nominatim ${response.status}`);
+  const data = (await response.json()) as Array<{ name?: string; display_name: string; lat: string; lon: string }>;
+  return data.map((item) => ({
+    name: item.name || item.display_name.split(",")[0],
+    lat: parseFloat(item.lat),
+    lng: parseFloat(item.lon),
+  }));
+}
+
+async function photon(query: string): Promise<GeocodeSuggestion[]> {
+  const params = new URLSearchParams({ q: query, lat: "40.75", lon: "-73.98", limit: "8", lang: "en" });
+  const response = await fetch(`https://photon.komoot.io/api/?${params}`, {
+    headers: { "User-Agent": "FrameOne/1.0 (https://frame-one.onrender.com)" },
+    signal: AbortSignal.timeout(GEOCODE_TIMEOUT_MS),
+  });
+  if (!response.ok) throw new Error(`Photon ${response.status}`);
+  const data = (await response.json()) as {
+    features: Array<{ geometry: { coordinates: [number, number] }; properties: { name?: string; street?: string; housenumber?: string } }>;
+  };
+  return data.features.map((f) => ({
+    name: f.properties.name || [f.properties.housenumber, f.properties.street].filter(Boolean).join(" "),
+    lat: f.geometry.coordinates[1],
+    lng: f.geometry.coordinates[0],
+  }));
+}
+
 app.get("/api/geocode", async (req, res) => {
   const query = String(req.query.q || "").trim();
   if (!query || query.length < 2) {
@@ -355,59 +425,26 @@ app.get("/api/geocode", async (req, res) => {
     return;
   }
 
-  try {
-    // Nominatim with NYC bias (viewbox around Manhattan, bounded)
-    const params = new URLSearchParams({
-      q: query,
-      format: "json",
-      addressdetails: "1",
-      limit: "6",
-      viewbox: "-74.05,40.9,-73.85,40.65",
-      bounded: "1",
-      countrycodes: "us",
-    });
+  // Both geocoders in parallel; either may 429/403 from Render's shared IP or time out.
+  const [nom, pho] = await Promise.allSettled([nominatim(query), photon(query)]);
+  for (const r of [nom, pho]) if (r.status === "rejected") console.log(`[geocode] ${r.reason}`);
+  const remote = [nom, pho].flatMap((r) => (r.status === "fulfilled" ? r.value : []));
 
-    const nominatimUrl = `https://nominatim.openstreetmap.org/search?${params}`;
-    const response = await fetch(nominatimUrl, {
-      headers: {
-        "User-Agent": "FrameOne/1.0 (demo film location app)",
-        Accept: "application/json",
-      },
-    });
+  // Catalog first, then remote; drop out-of-NYC, nameless, and near-duplicates (~1km).
+  const seen = new Set<string>();
+  const results = [...searchCatalog(query, spots), ...remote]
+    .filter((r) => r.name && Number.isFinite(r.lat) && Number.isFinite(r.lng) && inNyc(r.lat, r.lng))
+    .filter((r) => {
+      const key = `${r.name.toLowerCase()}|${r.lat.toFixed(2)}|${r.lng.toFixed(2)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 8);
 
-    if (!response.ok) {
-      console.log(`[geocode] Nominatim error: ${response.status}`);
-      res.json({ results: [] });
-      return;
-    }
-
-    const data = (await response.json()) as Array<{
-      display_name: string;
-      lat: string;
-      lon: string;
-      address?: { road?: string; neighbourhood?: string; suburb?: string; city?: string };
-    }>;
-
-    const results: GeocodeSuggestion[] = data.map((item) => {
-      const addr = item.address || {};
-      const shortName =
-        addr.road ||
-        addr.neighbourhood ||
-        addr.suburb ||
-        item.display_name.split(",")[0];
-      return {
-        name: shortName,
-        lat: parseFloat(item.lat),
-        lng: parseFloat(item.lon),
-      };
-    });
-
-    geocodeCache.set(cacheKey, { results, expires: Date.now() + GEOCODE_CACHE_TTL });
-    res.json({ results });
-  } catch (err) {
-    console.log(`[geocode] Error: ${err}`);
-    res.json({ results: [] });
-  }
+  // Don't cache an empty answer: it may just mean both providers were down.
+  if (results.length) geocodeCache.set(cacheKey, { results, expires: Date.now() + GEOCODE_CACHE_TTL });
+  res.json({ results });
 });
 
 app.listen(PORT, () => {

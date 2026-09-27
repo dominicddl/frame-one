@@ -143,12 +143,24 @@ export function addUnlock(spotId: string): void {
   }
 }
 
-/** Seed demo unlocks (for ?demo=1). Merges without duplicates. */
+const SEEDED_KEY = "frame_one_seeded";
+
+/** True once demo stamps were seeded on this device (so clearing stamps later sticks). */
+export function hasSeededDemo(): boolean {
+  try {
+    return localStorage.getItem(SEEDED_KEY) === "1";
+  } catch {
+    return true; // storage blocked: don't loop trying to seed
+  }
+}
+
+/** Seed demo unlocks (first visit, or forced by ?demo=1). Merges without duplicates. */
 export function seedDemoUnlocks(): void {
   const current = getUnlocks();
   const merged = [...new Set([...current, ...DEMO_UNLOCKS])];
   try {
     localStorage.setItem(UNLOCKS_KEY, JSON.stringify(merged));
+    localStorage.setItem(SEEDED_KEY, "1");
   } catch {
     // silently ignore
   }

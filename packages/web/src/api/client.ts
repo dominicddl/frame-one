@@ -36,10 +36,11 @@ export interface GeocodeSuggestion {
   lng: number;
 }
 
-export async function geocodePlace(query: string): Promise<GeocodeSuggestion[]> {
+// Throws on network/HTTP failure so callers can tell "search broke" from "no results".
+export async function geocodePlace(query: string, signal?: AbortSignal): Promise<GeocodeSuggestion[]> {
   if (!query || query.length < 2) return [];
-  const res = await fetch(`${API_URL}/api/geocode?q=${encodeURIComponent(query)}`);
-  if (!res.ok) return [];
+  const res = await fetch(`${API_URL}/api/geocode?q=${encodeURIComponent(query)}`, { signal });
+  if (!res.ok) throw new Error(`geocode failed (${res.status})`);
   const body = (await res.json()) as { results: GeocodeSuggestion[] };
   return body.results;
 }

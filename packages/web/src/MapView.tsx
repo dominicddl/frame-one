@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo, useCallback, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import maplibregl, { type Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { MatchResponse } from "@frame-one/shared";
@@ -20,11 +21,53 @@ interface MapViewProps {
   dock: ReactNode;
 }
 
+// /api/spots also returns year + stillUrl (SpotSummary type just doesn't declare them)
+type MapSpot = SpotSummary & { year?: number; stillUrl?: string };
+
+/**
+ * Pre-collected demo stamps + "your photo" per spot: public/collected/manifest.json.
+ * Every entry counts as collected. isNewSpot entries aren't in the catalog, so they become client-side pins.
+ * To swap photos, edit that manifest (popup shows composite ?? userPhoto).
+ */
+interface CollectedEntry {
+  spotId: string;
+  isNewSpot: boolean;
+  filmTitle: string;
+  year: number;
+  placeName: string;
+  lat: number;
+  lng: number;
+  userPhoto: string;
+  still: string;
+  composite: string | null;
+  trail: string;
+  trailOrder?: number;
+}
+
 const ZOOM = 12.5;
-const STAMP_HEIGHT = 0.36;
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
-const REVEAL_RADIUS = 84;
-const REVEAL_FEATHER = 12;
+// Mist: light warm grey over the whole map; each collected spot dissolves a soft hole.
+// Drawn on a 2D canvas with destination-out (reliable on iOS Safari, unlike CSS mask-composite).
+const MIST = "rgba(236, 231, 223, 0.82)";
+const REVEAL_RADIUS = 70; // px at ZOOM; scales with zoom so the hole covers the same ground
+const REVEAL_DELAY = 3000; // matches .unlocking --reveal (unlock-stage plays first)
+const SLAM_DELAY = 250; // no unlock-stage: slam almost straight away
+const SLAM_MS = 600;
+const MIDTOWN: [number, number] = [-73.981, 40.758];
+const ALL_ZOOM = 13.2;
+const GUIDE_KEY = "frame_one_guide_seen";
+// Completed Marvel trail: manifest trailOrder wins; this is the fallback order
+const MARVEL_TRAIL = ["tasm2-red-steps", "cap-america-times-square", "spider-man-nypl", "avengers-park-avenue-viaduct"];
+const GUIDE = [
+  { target: ".map-marker.is-unlocked", text: "Lit stamps = scenes you've recreated. Tap one to see your shot." },
+  { target: ".map-marker.is-locked:not(.is-hidden)", text: "? = a film scene nearby you haven't found yet. Tap for a hint and directions." },
+  { target: ".trail-filters", text: "Mist clears as you explore. Trails link scenes from the same world. Pick one up top." },
+];
+const JUST_STAMPED_KEY = "frame_one_just_stamped"; // sessionStorage spotId set by "Stamp & save"
+const REVEAL_MS = 1200;
+const LOCKED_MIN_ZOOM = 11.5; // hide locked peeks when zoomed out further
+const STAMP_GAP = 30; // min px between stamp centres before nudging apart
+const PEEK_GAP = 22; // min px between a peek and anything already shown
 
 // Catalog of spotIds with design package stamps
 const STAMP_SPOTS = [
@@ -35,35 +78,21 @@ const STAMP_SPOTS = [
   "friends-benefits-central-park-mall",
 ];
 
-// Returns stamp <img> HTML loading design package SVG from /stamps/
-// Falls back to inline SVG clapper for spots without custom art
 function getStampHtml(spotId: string): string {
-  if (STAMP_SPOTS.includes(spotId)) {
-    return `<img src="/stamps/${spotId}.svg" alt="" width="56" height="56" style="display:block" />`;
-  }
+  if (STAMP_SPOTS.includes(spotId)) return `<img src="/stamps/${spotId}.svg" alt="" draggable="false" />`;
   // Fallback clapper icon with #e87a2a ring
-  return '<svg width="56" height="56" viewBox="0 0 112 112"><circle cx="56" cy="56" r="53.5" fill="none" stroke="#e87a2a" stroke-width="5"/><circle cx="56" cy="56" r="50" fill="#2a241f"/><g fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round" transform="translate(28,28)"><rect x="6" y="24" width="44" height="26" rx="4"/><path d="M6 24 9 12h38l3 12"/><path d="M18 12 16 24M30 12l-2 12M42 12l-2 12"/></g></svg>';
-}
-
-// Design peek marker (yellow ?)
-const PEEK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="44" height="44"><circle cx="16" cy="16" r="14" fill="#F5C518" stroke="#1a1a1a" stroke-opacity="0.85" stroke-width="2"/><g fill="none" stroke="#1a1a1a" stroke-opacity="0.85" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 12.2c0-2.6 2-4.2 4.5-4.2s4.5 1.6 4.5 4c0 1.8-1 2.8-2.6 3.7-.9.5-1.5 1.1-1.5 2.3"/></g><circle cx="16" cy="22.8" r="1.5" fill="#1a1a1a" fill-opacity="0.85"/></svg>`;
-
-function markerEl(html: string) {
-  const el = document.createElement("div");
-  el.className = "map-marker";
-  el.innerHTML = html;
-  return el;
+  return '<svg viewBox="0 0 112 112"><circle cx="56" cy="56" r="53.5" fill="none" stroke="#e87a2a" stroke-width="5"/><circle cx="56" cy="56" r="50" fill="#2a241f"/><g fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round" transform="translate(28,28)"><rect x="6" y="24" width="44" height="26" rx="4"/><path d="M6 24 9 12h38l3 12"/><path d="M18 12 16 24M30 12l-2 12M42 12l-2 12"/></g></svg>';
 }
 
 const HANDOFF = {
   land: "#E3DACB",
-  water: "#96C0D9",
-  park: "#B3D4C1",
+  water: "#A9C6D6",
+  park: "#BFD5C3",
   building: "#D8CDB9",
-  street: "#FFFFFF",
+  street: "#F6F1E8",
   casing: "#D6CBB8",
-  labelLand: "#5E584D",
-  labelWater: "#274E66",
+  labelLand: "#6B6457",
+  labelWater: "#3D5F73",
 };
 
 function paintHandoff(map: MapLibreMap) {
@@ -80,9 +109,14 @@ function paintHandoff(map: MapLibreMap) {
       map.setPaintProperty(id, "fill-color", HANDOFF.building);
       map.setPaintProperty(id, "fill-opacity", 0.55);
     } else if (type === "line" && id.includes("casing")) map.setPaintProperty(id, "line-color", HANDOFF.casing);
-    else if (type === "line" && /highway|road|tunnel/.test(id)) map.setPaintProperty(id, "line-color", HANDOFF.street);
+    else if (type === "line" && /highway|road|tunnel|bridge/.test(id)) map.setPaintProperty(id, "line-color", HANDOFF.street);
     else if (type === "line" && id.startsWith("boundary")) map.setLayoutProperty(id, "visibility", "none");
     else if (type === "symbol") {
+      // Quiet chrome: drop POI / transit / shield clutter, keep place + street + water names
+      if (/poi|transit|shield|aeroway|housenumber/.test(id)) {
+        map.setLayoutProperty(id, "visibility", "none");
+        continue;
+      }
       const water = id.startsWith("water");
       map.setPaintProperty(id, "text-color", water ? HANDOFF.labelWater : HANDOFF.labelLand);
       map.setPaintProperty(id, "text-halo-color", water ? HANDOFF.water : HANDOFF.land);
@@ -119,29 +153,82 @@ function openDirections(lat: number, lng: number) {
 
 export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const greyRef = useRef<HTMLDivElement>(null);
+  const fogRef = useRef<HTMLCanvasElement | null>(null);
   const mapInstanceRef = useRef<MapLibreMap | null>(null);
-  const markersRef = useRef<maplibregl.Marker[]>([]);
-  const [spots, setSpots] = useState<SpotSummary[]>([]);
+  const markersRef = useRef(new Map<string, maplibregl.Marker>());
+  const drawRef = useRef<() => void>(() => {});
+  const rafRef = useRef(0);
+  const revealAt = useRef(0);
+  const [catalog, setCatalog] = useState<MapSpot[]>([]);
+  const [collected, setCollected] = useState<CollectedEntry[]>([]);
   const [trailFilter, setTrailFilter] = useState<TrailFilterId>("all");
+  const [selected, setSelected] = useState<string | null>(null);
+  const [popupEl] = useState(() => document.createElement("div"));
+  const [justStamped] = useState(() => {
+    try {
+      return sessionStorage.getItem(JUST_STAMPED_KEY);
+    } catch {
+      return null;
+    }
+  });
+  const slamPlayed = useRef(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [showThen, setShowThen] = useState(false);
+  const [guideStep, setGuideStep] = useState(-1);
   const focus = saved ? { lat: saved.match.lat, lng: saved.match.lng } : home;
-  const next = saved?.match.goNext ?? [];
+  const savedId = saved?.match.spotId;
+  // Spot whose character stamp slams onto the map this visit (capture signal, or the in-app unlock flow)
+  const slamId = justStamped ?? (unlocking ? savedId : undefined) ?? null;
+  const slamDelay = unlocking ? REVEAL_DELAY : SLAM_DELAY;
+  const spots = useMemo<MapSpot[]>(
+    () => [
+      ...catalog,
+      ...collected
+        .filter((c) => c.isNewSpot && !catalog.some((s) => s.spotId === c.spotId))
+        .map((c) => ({ spotId: c.spotId, filmTitle: c.filmTitle, year: c.year, lat: c.lat, lng: c.lng, neighbourhood: c.placeName, stillUrl: c.still })),
+    ],
+    [catalog, collected],
+  );
+  const trailIds = useMemo(() => {
+    const base: string[] | null = TRAIL_FILTERS[trailFilter].spotIds;
+    return base && [...base, ...collected.filter((c) => c.trail === trailFilter).map((c) => c.spotId)];
+  }, [trailFilter, collected]);
+
+  const marvelIds = useMemo(() => {
+    const ordered = collected
+      .filter((c) => c.trail === "superhero" && typeof c.trailOrder === "number")
+      .sort((a, b) => a.trailOrder! - b.trailOrder!)
+      .map((c) => c.spotId);
+    return ordered.length > 1 ? ordered : MARVEL_TRAIL;
+  }, [collected]);
+
+  // useUnlocks hands back a fresh array every render — key on content so effects don't thrash
+  const unlockKey = [...unlocks, ...collected.map((c) => c.spotId), savedId ?? "", slamId ?? ""].join(",");
+  const unlocked = useMemo(() => new Set(unlockKey.split(",").filter(Boolean)), [unlockKey]);
 
   useEffect(() => {
-    getSpots().then(setSpots).catch(console.error);
+    getSpots()
+      .then((s) => setCatalog(s as MapSpot[]))
+      .catch(console.error);
+    fetch("/collected/manifest.json")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((m: CollectedEntry[]) => setCollected(Array.isArray(m) ? m : []))
+      .catch(() => {});
   }, []);
 
-  // Memoize filteredSpots to prevent trail filter remounting MapLibre
-  const filteredSpots = useMemo(() => {
-    const config = TRAIL_FILTERS[trailFilter];
-    return spots.filter((spot) => config.spotIds === null || config.spotIds.includes(spot.spotId));
-  }, [spots, trailFilter]);
+  const schedule = useCallback(() => {
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = 0;
+      drawRef.current();
+    });
+  }, []);
 
   // Initialize map once
   useEffect(() => {
     const el = mapRef.current;
     if (!el || mapInstanceRef.current) return;
-    
+
     const map = new maplibregl.Map({
       container: el,
       style: STYLE_URL,
@@ -156,195 +243,377 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
     mapInstanceRef.current = map;
     map.touchZoomRotate.disableRotation();
     map.on("style.load", () => paintHandoff(map));
-    map.panBy([0, el.clientHeight * (0.5 - STAMP_HEIGHT)], { duration: 0 });
+
+    // Fog canvas lives inside the canvas container: above the basemap, below markers (appended later)
+    const fog = document.createElement("canvas");
+    fog.className = "map-fog";
+    map.getCanvasContainer().appendChild(fog);
+    fogRef.current = fog;
+    map.on("move", schedule);
+    map.on("resize", schedule);
 
     return () => {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
       mapInstanceRef.current = null;
+      fogRef.current = null;
       map.remove();
     };
   }, []);
 
-  // Update markers when filteredSpots/unlocks/saved changes (without remounting map)
+  // Play the slam once, then drop the signal so a reload doesn't replay it
+  useEffect(() => {
+    if (!slamId) return;
+    revealAt.current = performance.now() + slamDelay;
+    try {
+      sessionStorage.removeItem(JUST_STAMPED_KEY);
+    } catch {
+      /* ignore */
+    }
+    const t = setTimeout(() => (slamPlayed.current = true), slamDelay + SLAM_MS);
+    return () => clearTimeout(t);
+  }, [slamId, slamDelay]);
+
+  // Fog + trail line drawing
+  useEffect(() => {
+    const holes = spots.filter((s) => unlocked.has(s.spotId)).map((s) => ({ id: s.spotId, lng: s.lng, lat: s.lat }));
+    if (saved && !holes.some((h) => h.id === savedId)) holes.push({ id: saved.match.spotId, lng: saved.match.lng, lat: saved.match.lat });
+    const byId = new Map(spots.map((s) => [s.spotId, s]));
+    // ponytail: walk order = south→north; good enough for Manhattan-shaped trails
+    const marvel = marvelIds.map((id) => byId.get(id)).filter((s): s is MapSpot => !!s);
+    const marvelOn = trailFilter === "all" || trailFilter === "superhero";
+    const line = [...new Set(trailFilter === "superhero" ? [] : trailIds ?? [])]
+      .map((id) => byId.get(id))
+      .filter((s): s is MapSpot => !!s)
+      .sort((a, b) => a.lat - b.lat);
+
+    drawRef.current = () => {
+      const map = mapInstanceRef.current;
+      const canvas = fogRef.current;
+      if (!map || !canvas) return;
+      const { clientWidth: w, clientHeight: h } = map.getContainer();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+        canvas.style.width = `${w}px`;
+        canvas.style.height = `${h}px`;
+      }
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.globalCompositeOperation = "source-over";
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = MIST;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.globalCompositeOperation = "destination-out";
+      const R = REVEAL_RADIUS * 2 ** (map.getZoom() - ZOOM);
+      let animating = false;
+      for (const p of holes) {
+        let r = R;
+        if (p.id === slamId && revealAt.current) {
+          const t = (performance.now() - revealAt.current) / REVEAL_MS;
+          if (t < 1) {
+            animating = true;
+            r = t <= 0 ? 0 : R * (1 - (1 - t) ** 3);
+          }
+        }
+        if (r < 1) continue;
+        const { x, y } = map.project([p.lng, p.lat]);
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, "rgba(0,0,0,1)");
+        g.addColorStop(0.4, "rgba(0,0,0,0.9)");
+        g.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      }
+
+      ctx.globalCompositeOperation = "source-over";
+      const trace = (pts: MapSpot[]) => {
+        ctx.beginPath();
+        pts.forEach((s, i) => {
+          const { x, y } = map.project([s.lng, s.lat]);
+          if (i) ctx.lineTo(x, y);
+          else ctx.moveTo(x, y);
+        });
+      };
+      if (marvel.length > 1) {
+        // Glowing completed Marvel trail: blurred wide glow + bright core
+        const hi = trailFilter === "superhero";
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.globalAlpha = marvelOn ? 1 : 0.3;
+        trace(marvel);
+        ctx.shadowColor = "rgba(226, 70, 30, 0.9)";
+        ctx.shadowBlur = hi ? 18 : 12;
+        ctx.strokeStyle = "rgba(232, 96, 42, 0.55)";
+        ctx.lineWidth = hi ? 10 : 7;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = "#ffd7a8";
+        ctx.lineWidth = hi ? 3 : 2.2;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      if (line.length > 1) {
+        ctx.setLineDash([6, 7]);
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.strokeStyle = "rgba(232, 122, 42, 0.9)";
+        ctx.beginPath();
+        line.forEach((s, i) => {
+          const { x, y } = map.project([s.lng, s.lat]);
+          if (i) ctx.lineTo(x, y);
+          else ctx.moveTo(x, y);
+        });
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      if (animating) schedule();
+    };
+    schedule();
+  }, [spots, unlocked, saved, slamId, trailIds, trailFilter, marvelIds, schedule]);
+
+  // Markers: small muted peeks for locked spots, lit stamps for collected ones
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
+    const markers = markersRef.current;
+    markers.forEach((m) => m.remove());
+    markers.clear();
 
-    // Clear existing markers
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
-
-    // Add saved stamp marker
-    if (saved) {
-      const stampHtml = getStampHtml(saved.match.spotId);
-      const stamp = `<div class="stamp-pin"><span class="stamp-ripple"></span><span class="stamp-face">${stampHtml}</span></div>`;
-      const marker = new maplibregl.Marker({ element: markerEl(stamp) }).setLngLat([focus.lng, focus.lat]).addTo(map);
-      markersRef.current.push(marker);
-      
-      // Go-next peek markers with directions click
-      saved.match.goNext.forEach((item, i) => {
-        const pinEl = markerEl(`<div class="next-pin" style="animation-delay: calc(var(--reveal) + ${600 + i * 90}ms)">${PEEK_SVG}</div>`);
-        pinEl.style.cursor = "pointer";
-        pinEl.addEventListener("click", () => openDirections(item.lat, item.lng));
-        const m = new maplibregl.Marker({ element: pinEl }).setLngLat([item.lng, item.lat]).addTo(map);
-        markersRef.current.push(m);
-      });
+    for (const s of spots) {
+      const isUnlocked = unlocked.has(s.spotId);
+      const isSlam = s.spotId === slamId && !slamPlayed.current;
+      const el = document.createElement("div");
+      el.className = `map-marker ${isUnlocked ? "is-unlocked" : "is-locked"}${
+        trailIds && !trailIds.includes(s.spotId) ? " off-trail" : ""
+      }${isSlam ? " is-slam" : ""}`;
+      el.setAttribute("role", "button");
+      el.setAttribute("aria-label", isUnlocked ? `${s.filmTitle}, collected` : `Uncollected film spot, ${s.neighbourhood}`);
+      el.tabIndex = 0;
+      el.innerHTML = isUnlocked
+        ? `<div class="stamp-pin">${isSlam ? '<span class="stamp-ripple"></span>' : ""}<span class="stamp-face">${getStampHtml(s.spotId)}</span></div>`
+        : `<div class="peek-pin">?</div>`;
+      el.style.zIndex = isUnlocked ? "2" : "1";
+      const pick = (e: Event) => {
+        e.stopPropagation(); // keep the map click from closing the popup we're opening
+        setSelected(s.spotId);
+      };
+      el.addEventListener("click", pick);
+      el.addEventListener("keydown", (e) => e.key === "Enter" && pick(e));
+      markers.set(s.spotId, new maplibregl.Marker({ element: el }).setLngLat([s.lng, s.lat]).addTo(map));
     }
 
-    // Add filtered spot markers
-    filteredSpots.forEach((spot) => {
-      const isUnlocked = unlocks.includes(spot.spotId);
-      const isSaved = saved && saved.match.spotId === spot.spotId;
-      if (isSaved) return;
-
-      if (isUnlocked) {
-        const stampEl = markerEl(`<div class="stamp-pin unlocked-stamp"><span class="stamp-face">${getStampHtml(spot.spotId)}</span></div>`);
-        const m = new maplibregl.Marker({ element: stampEl }).setLngLat([spot.lng, spot.lat]).addTo(map);
-        markersRef.current.push(m);
-      } else {
-        const peekEl = markerEl(`<div class="peek-pin">${PEEK_SVG}</div>`);
-        peekEl.style.cursor = "pointer";
-        peekEl.addEventListener("click", () => openDirections(spot.lat, spot.lng));
-        const m = new maplibregl.Marker({ element: peekEl }).setLngLat([spot.lng, spot.lat]).addTo(map);
-        markersRef.current.push(m);
+    // ponytail: greedy O(n²) declutter — fine for a ~dozen spots; cluster source if the catalog grows
+    const declutter = () => {
+      const zoom = map.getZoom();
+      const kept: { x: number; y: number }[] = [];
+      const entries = [...markers.entries()].sort((a, b) => Number(unlocked.has(b[0])) - Number(unlocked.has(a[0])));
+      for (const [id, m] of entries) {
+        const p = map.project(m.getLngLat());
+        if (!unlocked.has(id)) {
+          const hide = zoom < LOCKED_MIN_ZOOM || kept.some((k) => Math.hypot(k.x - p.x, k.y - p.y) < PEEK_GAP);
+          m.getElement().classList.toggle("is-hidden", hide);
+          if (!hide) kept.push(p);
+          continue;
+        }
+        let dx = 0;
+        let dy = 0;
+        kept.forEach((k, i) => {
+          const d = Math.hypot(k.x - p.x, k.y - p.y);
+          if (d >= STAMP_GAP) return;
+          const ang = d > 0.5 ? Math.atan2(p.y - k.y, p.x - k.x) : (i + 1) * 1.3;
+          dx += Math.cos(ang) * (STAMP_GAP - d);
+          dy += Math.sin(ang) * (STAMP_GAP - d);
+        });
+        m.setOffset([dx, dy]);
+        kept.push({ x: p.x + dx, y: p.y + dy });
       }
-    });
+    };
+    map.on("zoomend", declutter);
+    map.on("moveend", declutter);
+    declutter();
 
-    // Go-chip markers with directions click (fix #7)
-    if (!saved && next.length === 0 && filteredSpots.length > 0) {
-      const lockedSpots = filteredSpots.filter((s) => !unlocks.includes(s.spotId));
-      const goNextSpots = lockedSpots.slice(0, 2);
-      goNextSpots.forEach((spot, i) => {
-        const chipEl = markerEl(`<div class="go-chip" style="animation-delay: ${600 + i * 90}ms">${spot.neighbourhood}</div>`);
-        chipEl.style.cursor = "pointer";
-        chipEl.addEventListener("click", () => openDirections(spot.lat, spot.lng));
-        const m = new maplibregl.Marker({ element: chipEl, anchor: "bottom" }).setLngLat([spot.lng, spot.lat]).addTo(map);
-        markersRef.current.push(m);
-      });
-    }
-
-    // Fit bounds to visible spots
-    if (filteredSpots.length > 0) {
-      const unlockedFiltered = filteredSpots.filter((s) => unlocks.includes(s.spotId));
-      const spotsToFit = unlockedFiltered.length > 0 ? unlockedFiltered : filteredSpots;
+    // "All": sit on the just-stamped spot, else Midtown (where the stamps live). Trail: fit the trail.
+    const fit = trailIds ? spots.filter((s) => trailIds.includes(s.spotId)) : [];
+    if (!trailIds) {
+      const focusSpot = spots.find((s) => s.spotId === (slamId ?? savedId));
+      map.easeTo({ center: focusSpot ? [focusSpot.lng, focusSpot.lat] : MIDTOWN, zoom: ALL_ZOOM, duration: 800 });
+    } else if (fit.length) {
+      const pts = fit;
       const bounds = new maplibregl.LngLatBounds();
-      spotsToFit.forEach((spot) => bounds.extend([spot.lng, spot.lat]));
-      if (saved) bounds.extend([focus.lng, focus.lat]);
-      map.fitBounds(bounds, { padding: { top: 140, right: 40, bottom: 300, left: 40 }, maxZoom: 14, duration: 800 });
+      pts.forEach((s) => bounds.extend([s.lng, s.lat]));
+      map.fitBounds(bounds, { padding: { top: 130, right: 40, bottom: 110, left: 40 }, maxZoom: 14.5, duration: 800 });
     }
-  }, [saved, focus.lat, focus.lng, filteredSpots, unlocks, next.length]);
-
-  // Grey mask update logic with throttled pan updates (fixes #4, #5)
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map) return;
-
-    const unlockedSpots = filteredSpots.filter((s) => unlocks.includes(s.spotId));
-
-    // Build hole gradient for multi-unlock mask (QA-passed destination-out approach)
-    // Each gradient: black at center (hole), transparent at edge
-    // With exclude/destination-out: black regions punch holes in grey overlay
-    // BRIEF: R=84px, feather=12px, rgba(28,28,30,0.72)
-    const buildHole = (x: number, y: number, z: number, isNew = false) => {
-      const R = REVEAL_RADIUS * z;
-      const feather = REVEAL_FEATHER * z;
-      if (isNew) {
-        // Animated reveal: use CSS var for radius
-        return `radial-gradient(circle at ${x}px ${y}px, black 0%, black calc(var(--reveal-r, ${R}px) - ${feather}px), transparent var(--reveal-r, ${R}px))`;
-      }
-      // Static hole: black center → transparent edge
-      return `radial-gradient(circle at ${x}px ${y}px, black 0%, black ${R - feather}px, transparent ${R}px)`;
-    };
-
-    const updateGreyMask = () => {
-      const style = greyRef.current?.style;
-      if (!style) return;
-
-      const z = 2 ** (map.getZoom() - ZOOM);
-      const holes: string[] = [];
-
-      if (saved) {
-        const p = map.project([focus.lng, focus.lat]);
-        holes.push(buildHole(p.x, p.y, z, unlocking));
-      }
-
-      unlockedSpots.forEach((s) => {
-        if (saved && s.spotId === saved.match.spotId) return;
-        const p = map.project([s.lng, s.lat]);
-        holes.push(buildHole(p.x, p.y, z, false));
-      });
-
-      if (holes.length > 0) {
-        // QA-passed: destination-out/exclude with black→transparent gradients
-        // Black regions punch holes, showing map through grey overlay
-        style.setProperty("-webkit-mask-image", holes.join(", "));
-        style.setProperty("mask-image", holes.join(", "));
-        style.setProperty("-webkit-mask-composite", "destination-out");
-        style.setProperty("mask-composite", "exclude");
-      } else {
-        style.removeProperty("-webkit-mask-image");
-        style.removeProperty("mask-image");
-        style.removeProperty("-webkit-mask-composite");
-        style.removeProperty("mask-composite");
-      }
-    };
-
-    // Throttled update during pan (fix #4)
-    let throttleTimer: ReturnType<typeof setTimeout> | null = null;
-    const throttledUpdate = () => {
-      if (throttleTimer) return;
-      throttleTimer = setTimeout(() => {
-        throttleTimer = null;
-        updateGreyMask();
-      }, 32); // ~30fps
-    };
-
-    updateGreyMask();
-    map.on("move", throttledUpdate);
-    map.on("moveend", updateGreyMask);
-    map.on("zoomend", updateGreyMask);
 
     return () => {
-      map.off("move", throttledUpdate);
-      map.off("moveend", updateGreyMask);
-      map.off("zoomend", updateGreyMask);
-      if (throttleTimer) clearTimeout(throttleTimer);
+      map.off("zoomend", declutter);
+      map.off("moveend", declutter);
     };
-  }, [saved, focus.lat, focus.lng, filteredSpots, unlocks, unlocking]);
+  }, [spots, unlocked, slamId, savedId, trailIds]);
 
-  const savedAlreadyCounted = saved && unlocks.includes(saved.match.spotId);
-  const stampCount = saved && !savedAlreadyCounted ? unlocks.length + 1 : unlocks.length;
-  const hasUnlocks = unlocks.length > 0 || saved;
+  // Freshly stamped spot: open its card once the slam + reveal have played
+  useEffect(() => {
+    const id = slamId ?? savedId;
+    if (!id) return;
+    const t = setTimeout(() => setSelected(id), slamId ? slamDelay + REVEAL_MS : 400);
+    return () => clearTimeout(t);
+  }, [slamId, savedId, slamDelay]);
+
+  // Coach overlay: once per device, after the slam if there is one
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(GUIDE_KEY)) return;
+    } catch {
+      return;
+    }
+    const t = setTimeout(() => {
+      setSelected(null);
+      setGuideStep(0);
+    }, slamId ? slamDelay + REVEAL_MS + 900 : 1500);
+    return () => clearTimeout(t);
+  }, [slamId, slamDelay]);
+
+  const closeGuide = () => {
+    setGuideStep(-1);
+    try {
+      localStorage.setItem(GUIDE_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+    if (slamId) setSelected(slamId);
+  };
+
+  useEffect(() => setShowThen(false), [selected]);
+
+  // Popup anchored to the tapped stamp; tapping the map closes it
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const s = spots.find((x) => x.spotId === selected);
+    if (!map || !s) return;
+    const marker = markersRef.current.get(s.spotId);
+    const mo = marker?.getOffset() ?? { x: 0, y: 0 };
+    let cleaning = false;
+    const popup = new maplibregl.Popup({
+      anchor: "bottom",
+      offset: [mo.x, mo.y - (unlocked.has(s.spotId) ? 18 : 14)],
+      closeButton: false,
+      maxWidth: "280px",
+      className: "spot-popup",
+      focusAfterOpen: false,
+    })
+      .setLngLat([s.lng, s.lat])
+      .setDOMContent(popupEl)
+      .addTo(map);
+    popup.on("close", () => {
+      if (!cleaning) setSelected(null);
+    });
+    map.easeTo({ center: [s.lng, s.lat], offset: [0, 90], duration: 500 });
+    return () => {
+      cleaning = true;
+      popup.remove();
+    };
+  }, [selected, spots, unlocked, popupEl]);
+
+  const sel = spots.find((s) => s.spotId === selected);
+  const selUnlocked = !!sel && unlocked.has(sel.spotId);
+  const selIsSaved = !!sel && sel.spotId === savedId;
+  const selEntry = sel && collected.find((c) => c.spotId === sel.spotId);
+  const selPhoto = selIsSaved ? saved?.photo : selEntry ? selEntry.composite ?? selEntry.userPhoto : null;
+  const selStill = selEntry?.still ?? sel?.stillUrl ?? (selIsSaved ? saved?.match.stillUrl : undefined);
+  // Then/Now: tap a recreate photo to flip to the film still (composites already contain both)
+  const canFlip = !!selPhoto && !!selStill && !selEntry?.composite;
+  const selThumb = (canFlip && showThen ? selStill : selPhoto) || selStill;
+
+  let guideRect: DOMRect | undefined;
+  if (guideStep >= 0) {
+    const vh = window.innerHeight;
+    guideRect = [...(rootRef.current?.querySelectorAll(GUIDE[guideStep].target) ?? [])]
+      .map((el) => el.getBoundingClientRect())
+      .find((r) => r.top > 100 && r.bottom < vh - 220);
+  }
+  const nextSpot = useMemo(() => {
+    if (!sel) return null;
+    const pool = spots.filter((s) => !unlocked.has(s.spotId) && s.spotId !== sel.spotId);
+    const onTrail = trailIds ? pool.filter((s) => trailIds.includes(s.spotId)) : [];
+    const cands = onTrail.length ? onTrail : pool;
+    const d = (s: MapSpot) => (s.lat - sel.lat) ** 2 + ((s.lng - sel.lng) * 0.76) ** 2; // 0.76 ≈ cos(NYC lat)
+    return cands.reduce<MapSpot | null>((best, s) => (!best || d(s) < d(best) ? s : best), null);
+  }, [sel, spots, unlocked, trailIds]);
+
+  const stampCount = unlocked.size;
 
   return (
-    <div className={`screen map-screen${unlocking ? " unlocking" : ""}${hasUnlocks ? " has-unlocks" : ""}`}>
+    <div
+      ref={rootRef}
+      className={`screen map-screen${unlocking ? " unlocking" : ""}${slamId ? " slamming" : ""}`}
+      style={{ "--slam-delay": `${slamDelay}ms` } as CSSProperties}
+    >
       <div ref={mapRef} className="map-canvas" />
-      <div ref={greyRef} className="grey-overlay" />
 
-      <div className="map-header">
-        <span className="map-title">New York</span>
-        <span className="map-count">{stampCount > 0 ? `${stampCount} stamp${stampCount !== 1 ? "s" : ""}` : "No stamps yet"}</span>
-      </div>
-
-      <div className="trail-filters">
-        {(Object.keys(TRAIL_FILTERS) as TrailFilterId[]).map((key) => {
-          const config = TRAIL_FILTERS[key];
-          const isActive = trailFilter === key;
-          return (
+      <div className="map-top">
+        <div className="map-header">
+          <span className="map-title">New York</span>
+          <span className="map-count">{stampCount > 0 ? `${stampCount} stamp${stampCount !== 1 ? "s" : ""}` : "No stamps yet"}</span>
+        </div>
+        <div className="trail-filters">
+          {(Object.keys(TRAIL_FILTERS) as TrailFilterId[]).map((key) => (
             <button
               key={key}
               type="button"
-              className={`trail-chip${isActive ? " active" : ""}`}
+              className={`trail-chip${trailFilter === key ? " active" : ""}`}
+              aria-pressed={trailFilter === key}
               onClick={() => setTrailFilter(key)}
             >
-              {config.label}
+              {TRAIL_FILTERS[key].label}
             </button>
-          );
-        })}
+          ))}
+        </div>
       </div>
 
+      {(trailFilter === "all" || trailFilter === "superhero") && <div className="marvel-tag">Marvel trail · completed ✓</div>}
+
+      {guideStep >= 0 && (
+        <div className="guide" onClick={closeGuide}>
+          {guideRect && (
+            <span
+              className="guide-ring"
+              style={{ left: guideRect.left - 8, top: guideRect.top - 8, width: guideRect.width + 16, height: guideRect.height + 16 }}
+            />
+          )}
+          <div className="guide-card" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="How the map works">
+            <div className="guide-step">
+              {guideStep + 1} / {GUIDE.length}
+            </div>
+            <p className="guide-text">{GUIDE[guideStep].text}</p>
+            <div className="guide-actions">
+              <button type="button" className="guide-skip" onClick={closeGuide}>
+                Skip
+              </button>
+              <button
+                type="button"
+                className="guide-next"
+                onClick={() => (guideStep + 1 < GUIDE.length ? setGuideStep(guideStep + 1) : closeGuide())}
+              >
+                {guideStep + 1 < GUIDE.length ? "Next" : "Done"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <a className="osm-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
-        © OpenStreetMap contributors · OpenFreeMap
+        © OpenStreetMap · OpenFreeMap
       </a>
+
+      {stampCount === 0 && !unlocking && (
+        <button type="button" className="map-hint" onClick={onShoot}>
+          Shoot a film spot to clear the mist
+        </button>
+      )}
 
       {saved && unlocking && (
         <div className="unlock-stage" role="status">
@@ -363,93 +632,46 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
         </div>
       )}
 
-      <div className="map-sheet">
-        <span className="sheet-handle" />
-        {saved ? (
-          <>
-            <div className="sheet-row">
-              <div className="mini-merge">
-                {saved.photo && <img src={saved.photo} alt="" className="merge-base" />}
-                <img src={saved.match.stillUrl} alt="" className="mini-inset" />
-              </div>
-              <div className="sheet-info">
-                <div className="sheet-title">{saved.placeName}</div>
-                <div className="sheet-meta">
-                  {saved.match.filmTitle} · {saved.match.year}
+      {sel &&
+        createPortal(
+          <div className="spot-card">
+            <div className="spot-card-row">
+              {selThumb &&
+                (canFlip ? (
+                  <button type="button" className="spot-card-flip" onClick={() => setShowThen((v) => !v)} aria-label="Switch then and now">
+                    <img className="spot-card-thumb" src={selThumb} alt="" />
+                    <span className="spot-card-flip-tag">{showThen ? "Then" : "Now"}</span>
+                  </button>
+                ) : (
+                  <img className={`spot-card-thumb${selUnlocked ? "" : " is-locked"}`} src={selThumb} alt="" />
+                ))}
+              <div className="spot-card-info">
+                <div className="spot-card-film">{sel.filmTitle}</div>
+                <div className="spot-card-meta">
+                  {sel.year ? `${sel.year} · ` : ""}
+                  {selIsSaved && saved ? saved.placeName : selEntry?.placeName ?? sel.neighbourhood}
+                </div>
+                <div className={`spot-card-status${selUnlocked ? " is-collected" : ""}`}>
+                  {selUnlocked ? "Collected" : "Scene nearby · not found yet"}
                 </div>
               </div>
             </div>
-            {next.length > 0 && (
-              <div className="go-next">
-                <div className="micro-label">Where to go next</div>
-                {next.map((item) => {
-                  const [film, area] = item.label.split(" — ");
-                  return (
-                    <button
-                      key={item.spotId}
-                      type="button"
-                      className="go-next-item"
-                      onClick={() => openDirections(item.lat, item.lng)}
-                    >
-                      <span className="go-next-q">?</span>
-                      <span className="go-next-text">
-                        <span className="go-next-film">{film}</span>
-                        {area && <span className="go-next-area">{area}</span>}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+            {selUnlocked && nextSpot ? (
+              <button type="button" className="spot-card-go" onClick={() => openDirections(nextSpot.lat, nextSpot.lng)}>
+                <span>Go next</span>
+                <span className="spot-card-go-sub">
+                  {nextSpot.filmTitle} · {nextSpot.neighbourhood}
+                </span>
+              </button>
+            ) : (
+              <button type="button" className="spot-card-go" onClick={() => openDirections(sel.lat, sel.lng)}>
+                <span>Go here</span>
+              </button>
             )}
-          </>
-        ) : unlocks.length > 0 ? (
-          <div className="sheet-unlocked">
-            <div className="sheet-title">{unlocks.length} stamp{unlocks.length !== 1 ? "s" : ""} collected</div>
-            <p className="sheet-meta">Keep exploring to unlock more film locations.</p>
-            {/* Derive go-next from remaining locked spots for ?demo=1 */}
-            {/* Prefer active trail filter, fall back to all spots */}
-            {(() => {
-              let lockedSpots = filteredSpots.filter((s) => !unlocks.includes(s.spotId));
-              // Fall back to ALL spots if current trail has no locked spots
-              if (lockedSpots.length === 0) {
-                lockedSpots = spots.filter((s) => !unlocks.includes(s.spotId));
-              }
-              lockedSpots = lockedSpots.slice(0, 3);
-              if (lockedSpots.length === 0) return null;
-              return (
-                <div className="go-next">
-                  <div className="micro-label">Where to go next</div>
-                  {lockedSpots.map((spot) => (
-                    <button
-                      key={spot.spotId}
-                      type="button"
-                      className="go-next-item"
-                      onClick={() => openDirections(spot.lat, spot.lng)}
-                    >
-                      <span className="go-next-q">?</span>
-                      <span className="go-next-text">
-                        <span className="go-next-film">{spot.filmTitle}</span>
-                        <span className="go-next-area">{spot.neighbourhood}</span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              );
-            })()}
-            <button type="button" className="primary-button" onClick={onShoot}>
-              Find another
-            </button>
-          </div>
-        ) : (
-          <div className="sheet-empty">
-            <div className="sheet-title">Nothing stamped yet</div>
-            <p className="sheet-meta">Shoot a place you've seen in a film to reveal the map.</p>
-            <button type="button" className="primary-button" onClick={onShoot}>
-              Start shooting
-            </button>
-          </div>
+            {selEntry && !selIsSaved && <div className="spot-card-credit">Photos: filminglocations via Imgur</div>}
+          </div>,
+          popupEl,
         )}
-      </div>
 
       {dock}
     </div>

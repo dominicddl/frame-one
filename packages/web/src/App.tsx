@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import type { MatchResponse, SoftMissSuggestion } from "@frame-one/shared";
 import { getSpots, postMatch, geocodePlace, type GeocodeSuggestion } from "./api/client";
 import { useUnlocks } from "./hooks/useUnlocks";
+import { hasSeededDemo } from "@frame-one/shared";
 import MapView, { type SavedStamp } from "./MapView";
 import "./tokens.css";
 import "./App.css";
@@ -17,19 +18,53 @@ interface Place {
 const DEFAULT_PLACE: Place = { name: "Times Square", lat: 40.758, lng: -73.9855 };
 const MIN_SCAN_MS = 2400;
 
-// Per-character stamp art for polaroid cutout (same as MapView)
-const STAMP_ART: Record<string, string> = {
-  "tasm2-red-steps": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 112" width="112" height="112"><defs><clipPath id="clip-tasm"><circle cx="56" cy="56" r="50"/></clipPath></defs><circle cx="56" cy="56" r="53.5" fill="none" stroke="#e87a2a" stroke-width="5"/><circle cx="56" cy="56" r="50" fill="#2a241f"/><g clip-path="url(#clip-tasm)"><ellipse cx="56" cy="48" rx="22" ry="26" fill="#c62828"/><ellipse cx="47" cy="46" rx="8" ry="10" fill="#90caf9" transform="rotate(-12 47 46)"/><ellipse cx="65" cy="46" rx="8" ry="10" fill="#90caf9" transform="rotate(12 65 46)"/><ellipse cx="47" cy="46" rx="4.5" ry="6" fill="#1565c0" transform="rotate(-12 47 46)"/><ellipse cx="65" cy="46" rx="4.5" ry="6" fill="#1565c0" transform="rotate(12 65 46)"/><path d="M56 28 L56 74 M40 40 L72 56 M72 40 L40 56" fill="none" stroke="#8b1a1a" stroke-width="1.2" opacity="0.55"/><path d="M34 78 Q56 68 78 78 L78 112 L34 112 Z" fill="#1565c0"/><path d="M44 78 Q56 72 68 78 L68 112 L44 112 Z" fill="#c62828"/></g></svg>`,
-  "home-alone-radio-city": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 112" width="112" height="112"><defs><clipPath id="clip-kevin"><circle cx="56" cy="56" r="50"/></clipPath></defs><circle cx="56" cy="56" r="53.5" fill="none" stroke="#e87a2a" stroke-width="5"/><circle cx="56" cy="56" r="50" fill="#f7f1ea"/><g clip-path="url(#clip-kevin)"><ellipse cx="56" cy="54" rx="20" ry="22" fill="#e8c4a8"/><path d="M34 48 Q34 28 56 26 Q78 28 78 48 L78 52 Q56 48 34 52 Z" fill="#2a241f"/><ellipse cx="56" cy="28" rx="7" ry="5" fill="#e87a2a"/><circle cx="48" cy="54" r="3.2" fill="#2a241f"/><circle cx="64" cy="54" r="3.2" fill="#2a241f"/><ellipse cx="56" cy="66" rx="5" ry="6" fill="#2a241f"/><path d="M38 74 Q56 70 74 74 L78 88 Q56 92 34 88 Z" fill="#c62828"/><rect x="62" y="78" width="10" height="28" rx="3" fill="#c62828"/><rect x="62" y="100" width="10" height="6" rx="2" fill="#f7f1ea" opacity="0.7"/></g></svg>`,
-  "joker-bronx-stairs": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 112" width="112" height="112"><defs><clipPath id="clip-joker"><circle cx="56" cy="56" r="50"/></clipPath></defs><circle cx="56" cy="56" r="53.5" fill="none" stroke="#e87a2a" stroke-width="5"/><circle cx="56" cy="56" r="50" fill="#2a241f"/><g clip-path="url(#clip-joker)"><path d="M28 58 Q26 22 56 18 Q86 22 84 58 Q78 42 56 40 Q34 42 28 58 Z" fill="#4caf50"/><path d="M30 50 Q28 30 42 26 Q36 40 30 50 M82 50 Q84 30 70 26 Q76 40 82 50" fill="#66bb6a"/><ellipse cx="56" cy="58" rx="18" ry="20" fill="#f5f0e8"/><ellipse cx="48" cy="56" rx="3.5" ry="4" fill="#1a1a1a"/><ellipse cx="64" cy="56" rx="3.5" ry="4" fill="#1a1a1a"/><path d="M42 68 Q56 80 70 68" fill="none" stroke="#c62828" stroke-width="2.5" stroke-linecap="round"/><path d="M36 82 Q56 76 76 82 L80 112 L32 112 Z" fill="#6a1b9a"/><path d="M52 82 L56 96 L60 82" fill="#f5f0e8"/></g></svg>`,
-  "cap-america-times-square": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 112" width="112" height="112"><defs><clipPath id="clip-cap"><circle cx="56" cy="56" r="50"/></clipPath></defs><circle cx="56" cy="56" r="53.5" fill="none" stroke="#e87a2a" stroke-width="5"/><circle cx="56" cy="56" r="50" fill="#f7f1ea"/><g clip-path="url(#clip-cap)"><circle cx="56" cy="56" r="34" fill="#c62828"/><circle cx="56" cy="56" r="26" fill="#f7f1ea"/><circle cx="56" cy="56" r="18" fill="#c62828"/><circle cx="56" cy="56" r="11" fill="#1565c0"/><path d="M56 47 L58.5 53.5 L65.5 53.5 L60 58 L62.2 64.5 L56 60.5 L49.8 64.5 L52 58 L46.5 53.5 L53.5 53.5 Z" fill="#f7f1ea"/></g></svg>`,
-  "friends-benefits-central-park-mall": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 112" width="112" height="112"><defs><clipPath id="clip-fwb"><circle cx="56" cy="56" r="50"/></clipPath></defs><circle cx="56" cy="56" r="53.5" fill="none" stroke="#e87a2a" stroke-width="5"/><circle cx="56" cy="56" r="50" fill="#2a241f"/><g clip-path="url(#clip-fwb)"><ellipse cx="56" cy="90" rx="40" ry="14" fill="#3d5a3d" opacity="0.45"/><circle cx="42" cy="44" r="11" fill="#e8c4a8"/><path d="M30 58 Q42 52 54 58 L54 92 L30 92 Z" fill="#5d4e37"/><path d="M32 38 Q42 30 52 38 Q48 48 42 48 Q36 48 32 38 Z" fill="#2a241f"/><circle cx="70" cy="44" r="11" fill="#e8c4a8"/><path d="M58 58 Q70 52 82 58 L82 92 L58 92 Z" fill="#8b4513"/><path d="M58 40 Q62 28 70 28 Q78 28 82 40 L80 56 Q70 60 60 56 Z" fill="#4a3728"/><path d="M50 62 Q56 56 62 62 Q56 70 50 62 Z" fill="#e87a2a"/></g></svg>`,
-};
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
 
-const STAMP_FALLBACK = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 112" width="112" height="112"><circle cx="56" cy="56" r="53.5" fill="none" stroke="#e87a2a" stroke-width="5"/><circle cx="56" cy="56" r="50" fill="#2a241f"/><g fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round" transform="translate(28,28)"><rect x="6" y="24" width="44" height="26" rx="4"/><path d="M6 24 9 12h38l3 12"/><path d="M18 12 16 24M30 12l-2 12M42 12l-2 12"/></g></svg>';
-
-function getStampArt(spotId: string): string {
-  return STAMP_ART[spotId] || STAMP_FALLBACK;
+// Then & now: the film still, placed where the align ghost sat (70% wide, centred),
+// feathered into the retaken photo. Returns a JPEG data URL used for preview, save and download.
+async function composeThenAndNow(photoUrl: string, stillUrl: string): Promise<string> {
+  const photo = await loadImage(photoUrl);
+  // ponytail: cap at 1600px, iOS Safari canvases die above ~16MP
+  const scale = Math.min(1, 1600 / Math.max(photo.naturalWidth, photo.naturalHeight));
+  const w = Math.round(photo.naturalWidth * scale);
+  const h = Math.round(photo.naturalHeight * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(photo, 0, 0, w, h);
+  try {
+    const still = await loadImage(stillUrl);
+    const aspect = still.naturalHeight / still.naturalWidth || 1;
+    const dw = Math.round(Math.min(w * 0.7, (h * 0.9) / aspect));
+    const dh = Math.round(dw * aspect);
+    const layer = document.createElement("canvas");
+    layer.width = dw;
+    layer.height = dh;
+    const lctx = layer.getContext("2d")!;
+    lctx.drawImage(still, 0, 0, dw, dh);
+    // Elliptical feather: solid-ish core, fading to nothing at the still's edges
+    lctx.globalCompositeOperation = "destination-in";
+    lctx.translate(dw / 2, dh / 2);
+    lctx.scale(dw / 2, dh / 2);
+    const g = lctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+    g.addColorStop(0, "rgba(0,0,0,0.78)");
+    g.addColorStop(0.55, "rgba(0,0,0,0.7)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    lctx.fillStyle = g;
+    lctx.fillRect(-1, -1, 2, 2);
+    ctx.drawImage(layer, (w - dw) / 2, (h - dh) / 2);
+  } catch (err) {
+    console.error("Still failed to load; polaroid uses the photo alone:", err);
+  }
+  return canvas.toDataURL("image/jpeg", 0.9);
 }
 
 function wait(ms: number) {
@@ -107,6 +142,8 @@ export default function App() {
   const [match, setMatch] = useState<MatchResponse | null>(null);
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraBlocked, setCameraBlocked] = useState(false);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<SavedStamp | null>(null);
   const [justUnlocked, setJustUnlocked] = useState(false);
@@ -117,6 +154,8 @@ export default function App() {
   const [placeError, setPlaceError] = useState<string | null>(null);
   const [geocodedPlaces, setGeocodedPlaces] = useState<GeocodeSuggestion[]>([]);
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [geocodeError, setGeocodeError] = useState(false);
+  const [compositeUrl, setCompositeUrl] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<SoftMissSuggestion[]>([]);
   const [spotsCache, setSpotsCache] = useState<{ spotId: string; lat: number; lng: number; neighbourhood: string }[]>([]);
   const [recreateSubStep, setRecreateSubStep] = useState<"align" | "stamp">("align");
@@ -131,25 +170,56 @@ export default function App() {
   // Use the useUnlocks hook as the single source of truth
   const { unlocks, unlock, seedDemo } = useUnlocks();
 
-  // Seed demo unlocks if ?demo=1 is in URL
+  // Seed demo stamps once on first visit (map looks lived-in); ?demo=1 forces a reseed
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("demo") === "1") {
+    if (params.get("demo") === "1" || !hasSeededDemo()) {
       seedDemo();
     }
   }, [seedDemo]);
 
+  // iOS Safari: srcObject alone isn't enough, play() must be called explicitly.
   useEffect(() => {
-    if (cameraStream && videoRef.current) {
-      videoRef.current.srcObject = cameraStream;
+    const video = videoRef.current;
+    if (cameraStream && video) {
+      video.srcObject = cameraStream;
+      video.play().catch(() => {});
     }
   }, [cameraStream]);
 
   useEffect(() => {
-    if (recreateCameraStream && recreateVideoRef.current) {
-      recreateVideoRef.current.srcObject = recreateCameraStream;
+    const video = recreateVideoRef.current;
+    if (recreateCameraStream && video) {
+      video.srcObject = recreateCameraStream;
+      video.play().catch(() => {});
     }
   }, [recreateCameraStream]);
+
+  // Live rear camera by default on the capture screen; tracks stop when leaving it.
+  const wantCamera = step === "capture" && !photoDataUrl;
+  useEffect(() => {
+    if (!wantCamera) return;
+    let cancelled = false;
+    startCamera(() => cancelled);
+    return () => {
+      cancelled = true;
+      stopCamera();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantCamera]);
+
+  // Build the then-and-now composite once the retaken photo exists.
+  useEffect(() => {
+    setCompositeUrl(null);
+    if (!recreatePhotoUrl || !match) return;
+    let cancelled = false;
+    composeThenAndNow(recreatePhotoUrl, match.stillUrl)
+      .then((url) => !cancelled && setCompositeUrl(url))
+      .catch(() => !cancelled && setCompositeUrl(recreatePhotoUrl));
+    return () => {
+      cancelled = true;
+    };
+  }, [recreatePhotoUrl, match]);
 
   useEffect(() => {
     if (step !== "scanning") return;
@@ -209,7 +279,9 @@ export default function App() {
   }, [step, place.lat, place.lng, movieQuery, photoDataUrl]);
 
   function stopCamera() {
-    cameraStream?.getTracks().forEach((track) => track.stop());
+    // Ref, not state: cleanup closures would otherwise see a stale (null) stream.
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
     setCameraStream(null);
   }
 
@@ -218,19 +290,30 @@ export default function App() {
     setPhotoDataUrl(dataUrl);
   }
 
-  async function startCamera() {
+  async function startCamera(isCancelled: () => boolean = () => false) {
+    if (cameraStreamRef.current) return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraBlocked(true);
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+      if (isCancelled() || cameraStreamRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      cameraStreamRef.current = stream;
+      setCameraBlocked(false);
       setCameraStream(stream);
     } catch (err) {
       console.error("Camera access failed:", err);
-      fileInputRef.current?.click();
+      if (!isCancelled()) setCameraBlocked(true);
     }
   }
 
   function capturePhoto() {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || !video.videoWidth) return;
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -272,7 +355,7 @@ export default function App() {
 
   function captureRecreatePhoto() {
     const video = recreateVideoRef.current;
-    if (!video) return;
+    if (!video || !video.videoWidth) return;
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -329,23 +412,34 @@ export default function App() {
 
   // Debounced geocoding for typed place queries
   useEffect(() => {
+    setGeocodeError(false);
     if (!editingPlace || placeQuery.trim().length < 2) {
       setGeocodedPlaces([]);
+      setIsGeocoding(false);
       return;
     }
+    // Pending from the first keystroke, so "No places found" never flashes mid-debounce.
     setIsGeocoding(true);
+    const controller = new AbortController();
     const timer = setTimeout(() => {
-      geocodePlace(placeQuery.trim())
+      geocodePlace(placeQuery.trim(), controller.signal)
         .then((results) => {
+          if (controller.signal.aborted) return;
           setGeocodedPlaces(results);
           setIsGeocoding(false);
         })
-        .catch(() => {
+        .catch((err) => {
+          if (controller.signal.aborted) return; // superseded by a newer query
+          console.error("Geocode failed:", err);
           setGeocodedPlaces([]);
+          setGeocodeError(true);
           setIsGeocoding(false);
         });
-    }, 300);
-    return () => clearTimeout(timer);
+    }, 350);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [placeQuery, editingPlace]);
 
   function pickPlace(next: Place) {
@@ -370,90 +464,50 @@ export default function App() {
   function saveToMap() {
     if (!match) return;
     // Use the recreate photo for the saved stamp (not original recognize photo)
-    const finalPhoto = recreatePhotoUrl || photoDataUrl;
+    const finalPhoto = compositeUrl || recreatePhotoUrl || photoDataUrl;
     unlock(match.spotId);
+    // Map reads this once to play the character-stamp slam, then clears it.
+    try {
+      sessionStorage.setItem("frame_one_just_stamped", match.spotId);
+    } catch {
+      /* private mode: map still gets saved + unlocking props */
+    }
     setSaved({ match, photo: finalPhoto, placeName: place.name });
     stopRecreateCamera();
     setJustUnlocked(true);
     setStep("map");
   }
 
-  // Download polaroid image file with character stamp cutout
+  // Download the same then-and-now composite shown on screen, in a polaroid frame
   const downloadOverlay = useCallback(async () => {
-    const sourcePhoto = recreatePhotoUrl || photoDataUrl;
-    if (!match || !sourcePhoto) return;
+    if (!match || !compositeUrl) return;
+    const img = await loadImage(compositeUrl);
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Load user photo
-    const userImg = new Image();
-    userImg.crossOrigin = "anonymous";
-    await new Promise<void>((resolve) => {
-      userImg.onload = () => resolve();
-      userImg.src = sourcePhoto;
-    });
-
     // Polaroid frame: white border with larger bottom for label
-    const borderSide = 20;
-    const borderTop = 20;
+    const border = 20;
     const borderBottom = 64;
-    const photoWidth = userImg.width;
-    const photoHeight = userImg.height;
-    
-    canvas.width = photoWidth + borderSide * 2;
-    canvas.height = photoHeight + borderTop + borderBottom;
-
-    // White polaroid background
+    canvas.width = img.naturalWidth + border * 2;
+    canvas.height = img.naturalHeight + border + borderBottom;
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, border, border);
 
-    // Draw user photo as polaroid body
-    ctx.drawImage(userImg, borderSide, borderTop, photoWidth, photoHeight);
-
-    // Load character stamp SVG as image for centered cutout
-    const stampSvg = getStampArt(match.spotId);
-    const stampImg = new Image();
-    const svgBlob = new Blob([stampSvg], { type: "image/svg+xml" });
-    const svgUrl = URL.createObjectURL(svgBlob);
-    await new Promise<void>((resolve) => {
-      stampImg.onload = () => resolve();
-      stampImg.onerror = () => resolve();
-      stampImg.src = svgUrl;
-    });
-    URL.revokeObjectURL(svgUrl);
-
-    if (stampImg.complete && stampImg.naturalWidth > 0) {
-      // Draw character stamp centered (40% of photo width)
-      const stampSize = Math.min(photoWidth, photoHeight) * 0.4;
-      const stampX = borderSide + (photoWidth - stampSize) / 2;
-      const stampY = borderTop + (photoHeight - stampSize) / 2;
-
-      ctx.shadowColor = "rgba(0, 0, 0, 0.3)";
-      ctx.shadowBlur = 12;
-      ctx.shadowOffsetY = 4;
-      ctx.drawImage(stampImg, stampX, stampY, stampSize, stampSize);
-      ctx.shadowColor = "transparent";
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetY = 0;
-    }
-
-    // Film title in bottom polaroid area
+    ctx.textAlign = "center";
     ctx.font = "italic 20px Georgia, serif";
     ctx.fillStyle = "#2a241f";
-    ctx.textAlign = "center";
     ctx.fillText(match.filmTitle, canvas.width / 2, canvas.height - borderBottom / 2 + 6);
-    
     ctx.font = "13px system-ui, sans-serif";
     ctx.fillStyle = "#8a8580";
     ctx.fillText(String(match.year), canvas.width / 2, canvas.height - borderBottom / 2 + 24);
 
-    // Download as real image file (data URL a-download)
     const link = document.createElement("a");
     link.download = `frame-one-${match.spotId}.jpg`;
     link.href = canvas.toDataURL("image/jpeg", 0.92);
     link.click();
-  }, [match, photoDataUrl, recreatePhotoUrl]);
+  }, [match, compositeUrl]);
 
   function openMap() {
     stopCamera();
@@ -470,7 +524,7 @@ export default function App() {
   }
 
   if (step === "capture") {
-    const mode = cameraStream ? "camera" : photoDataUrl ? "preview" : "empty";
+    const mode = photoDataUrl ? "preview" : cameraStream ? "camera" : "empty";
     return (
       <div className="screen capture">
         <div className="location-pill">
@@ -481,6 +535,11 @@ export default function App() {
         <div className="capture-well">
           {mode === "camera" && <video ref={videoRef} autoPlay playsInline muted className="well-media" />}
           {mode === "preview" && photoDataUrl && <img src={photoDataUrl} alt="Your photo" className="well-media" />}
+          {mode === "empty" && cameraBlocked && (
+            <button type="button" className="camera-enable" onClick={() => startCamera()}>
+              Tap to enable camera
+            </button>
+          )}
           {mode !== "preview" && (
             <div className="camera-brackets" aria-hidden="true">
               <span className="bracket tl" />
@@ -491,7 +550,13 @@ export default function App() {
           )}
         </div>
 
-        <p className="instruction">{mode === "preview" ? "Ready to find the scene?" : "Point at somewhere you've seen in a film"}</p>
+        <p className="instruction">
+          {mode === "preview"
+            ? "Ready to find the scene?"
+            : mode === "empty" && cameraBlocked
+              ? "Camera is off. Enable it, or upload a photo."
+              : "Point at somewhere you've seen in a film"}
+        </p>
 
         <div className="shutter-row">
           {mode === "preview" ? (
@@ -506,7 +571,7 @@ export default function App() {
           ) : (
             <>
               <button type="button" className="round-button demo-thumb" onClick={loadDemoPhoto} aria-label="Use the demo photo" />
-              <button type="button" className="shutter" onClick={mode === "camera" ? capturePhoto : startCamera} aria-label="Take the photo">
+              <button type="button" className="shutter" onClick={mode === "camera" ? capturePhoto : () => startCamera()} aria-label="Take the photo">
                 <svg width="30" height="30" viewBox="0 0 20 20" fill="none" stroke="#FFFFFF" strokeWidth="1.8" aria-hidden="true">
                   <rect x="2" y="5.5" width="16" height="11.5" rx="3" />
                   <circle cx="10" cy="11.2" r="3.4" />
@@ -574,7 +639,7 @@ export default function App() {
                 Use my GPS
               </button>
               {isGeocoding && placeQuery.trim().length >= 2 && (
-                <span className="place-hint">Searching...</span>
+                <span className="place-hint">Searching…</span>
               )}
               {geocodedPlaces.length > 0 && (
                 <>
@@ -607,7 +672,9 @@ export default function App() {
                 </>
               )}
               {placeQuery.trim().length >= 2 && geocodedPlaces.length === 0 && !isGeocoding && (
-                <span className="place-hint">No places found. Try another search.</span>
+                <span className="place-hint">
+                  {geocodeError ? "Couldn't reach search. Check your connection and try again." : "No places found. Try another search."}
+                </span>
               )}
             </div>
             {placeError && <p className="form-error">{placeError}</p>}
@@ -828,9 +895,8 @@ export default function App() {
               />
             ) : (
               <div className="align-placeholder">
-                <p>Camera not available</p>
-                <button type="button" className="secondary-button" onClick={() => recreateFileInputRef.current?.click()}>
-                  Upload a photo
+                <button type="button" className="camera-enable" onClick={startRecreateCamera}>
+                  Tap to enable camera
                 </button>
               </div>
             )}
@@ -880,10 +946,9 @@ export default function App() {
 
         <div className="polaroid-frame">
           <div className="polaroid-photo">
-            {recreatePhotoUrl && <img src={recreatePhotoUrl} alt="Your recreated photo" className="polaroid-base" />}
-            <div className="polaroid-cutout-wrap">
-              <div className="polaroid-stamp" dangerouslySetInnerHTML={{ __html: getStampArt(match.spotId) }} />
-            </div>
+            {compositeUrl && (
+              <img src={compositeUrl} alt={`${match.filmTitle} then, and your photo now`} className="polaroid-base" />
+            )}
           </div>
           <div className="polaroid-label">
             <span className="polaroid-film">{match.filmTitle}</span>
@@ -892,14 +957,14 @@ export default function App() {
         </div>
 
         <p className="merge-copy">
-          Your polaroid with the character stamp. Save it to your map!
+          The film, then. Your shot, now. Save it to your map!
         </p>
 
         <div className="recreate-actions">
           <button type="button" onClick={saveToMap} className="primary-button">
             Stamp &amp; save
           </button>
-          <button type="button" onClick={downloadOverlay} className="secondary-button">
+          <button type="button" onClick={downloadOverlay} className="secondary-button" disabled={!compositeUrl}>
             <ShareIcon />
             Download
           </button>
