@@ -305,7 +305,93 @@ figure {
 
 .location-info {
   display: flex;
+  flex: 1;
   flex-direction: column;
+  min-width: 0;
+}
+
+.edit-button {
+  flex-shrink: 0;
+  min-width: 64px;
+  height: 44px;
+  margin: -6px -8px -6px 0;
+  padding: 0 16px;
+  background: var(--raised);
+  border: none;
+  border-radius: 22px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.2s;
+}
+
+.edit-button:active,
+.place-option:active {
+  transform: scale(0.95);
+}
+
+.edit-button[aria-expanded="true"] {
+  background: var(--action);
+  color: var(--on-action);
+}
+
+.place-editor {
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  animation: drift 260ms var(--ease-out) both;
+}
+
+.place-search {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  background: var(--ground);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.place-search:focus {
+  outline: none;
+  border-color: var(--action);
+}
+
+.place-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.place-option {
+  height: 44px;
+  padding: 0 14px;
+  background: var(--raised);
+  border: 1px solid transparent;
+  border-radius: 22px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.place-option.selected {
+  background: var(--surface);
+  border-color: var(--action);
+  color: var(--action);
+}
+
+.place-option.gps {
+  background: var(--action);
+  color: var(--on-action);
 }
 
 .location-title {

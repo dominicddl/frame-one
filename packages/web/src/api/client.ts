@@ -1,4 +1,4 @@
-import type { MatchRequest, MatchResponse } from "@frame-one/shared";
+import type { MatchRequest, MatchResponse, Spot } from "@frame-one/shared";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 
@@ -13,6 +13,15 @@ export async function postMatch(body: MatchRequest): Promise<MatchResponse> {
     throw new Error(`match failed (${res.status}): ${text}`);
   }
   return res.json() as Promise<MatchResponse>;
+}
+
+export type SpotSummary = Pick<Spot, "spotId" | "neighbourhood" | "lat" | "lng">;
+
+export async function getSpots(): Promise<SpotSummary[]> {
+  const res = await fetch(`${API_URL}/api/spots`);
+  if (!res.ok) throw new Error(`spots failed (${res.status})`);
+  const body = (await res.json()) as { spots: SpotSummary[] };
+  return body.spots;
 }
 
 export async function getHealth(): Promise<{ ok: boolean }> {

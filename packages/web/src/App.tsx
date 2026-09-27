@@ -1,16 +1,19 @@
 import { useState, useRef, useEffect } from "react";
 import type { MatchResponse } from "@frame-one/shared";
-import { postMatch } from "./api/client";
+import { getSpots, postMatch } from "./api/client";
 import MapView, { type SavedStamp } from "./MapView";
 import "./tokens.css";
 import "./App.css";
 
 type Step = "capture" | "questions" | "scanning" | "result" | "recreate" | "map";
 
-const DEMO_LAT = 40.758;
-const DEMO_LNG = -73.9855;
-const DEMO_LOCATION = "Times Square, Manhattan";
-const PLACE_NAME = "Times Square";
+interface Place {
+  name: string;
+  lat: number;
+  lng: number;
+}
+
+const DEFAULT_PLACE: Place = { name: "Times Square", lat: 40.758, lng: -73.9855 };
 const MIN_SCAN_MS = 2400;
 
 function wait(ms: number) {
@@ -82,6 +85,11 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<SavedStamp | null>(null);
   const [justUnlocked, setJustUnlocked] = useState(false);
+  const [place, setPlace] = useState<Place>(DEFAULT_PLACE);
+  const [editingPlace, setEditingPlace] = useState(false);
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [placeQuery, setPlaceQuery] = useState("");
+  const [placeError, setPlaceError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -95,7 +103,7 @@ export default function App() {
     if (step !== "scanning") return;
     let cancelled = false;
     Promise.all([
-      postMatch({ lat: DEMO_LAT, lng: DEMO_LNG, movieQuery, photoDataUrl: photoDataUrl || undefined }),
+      postMatch({ lat: place.lat, lng: place.lng, movieQuery, photoDataUrl: photoDataUrl || undefined }),
       wait(MIN_SCAN_MS),
     ])
       .then(([result]) => {
@@ -160,9 +168,39 @@ export default function App() {
     setStep("capture");
   }
 
+  function toggleEditPlace() {
+    setEditingPlace(!editingPlace);
+    setPlaceError(null);
+    if (places.length) return;
+    getSpots()
+      .then((spots) => {
+        const byName = new Map(spots.map((s) => [s.neighbourhood, { name: s.neighbourhood, lat: s.lat, lng: s.lng }]));
+        setPlaces([...byName.values()]);
+      })
+      .catch(() => setPlaceError("Couldn't load places. Try again."));
+  }
+
+  function pickPlace(next: Place) {
+    setPlace(next);
+    setEditingPlace(false);
+    setPlaceQuery("");
+  }
+
+  function locateWithGps() {
+    if (!navigator.geolocation) {
+      setPlaceError("GPS isn't available here. Pick a place instead.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => pickPlace({ name: "Your location", lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => setPlaceError("Couldn't get your GPS. Pick a place instead."),
+      { enableHighAccuracy: true, timeout: 8000 },
+    );
+  }
+
   function saveToMap() {
     if (!match) return;
-    setSaved({ match, photo: photoDataUrl });
+    setSaved({ match, photo: photoDataUrl, placeName: place.name });
     setJustUnlocked(true);
     setStep("map");
   }
@@ -187,7 +225,7 @@ export default function App() {
       <div className="screen capture">
         <div className="location-pill">
           <span className="dot blink" />
-          <span className="location-name">{DEMO_LOCATION}</span>
+          <span className="location-name">{place.name}</span>
         </div>
 
         <div className="capture-well">
@@ -262,9 +300,45 @@ export default function App() {
           </svg>
           <div className="location-info">
             <span className="micro-label">Where you are</span>
-            <span className="location-title">{DEMO_LOCATION}</span>
+            <span className="location-title">{place.name}</span>
           </div>
+          <button type="button" className="edit-button" onClick={toggleEditPlace} aria-expanded={editingPlace} aria-controls="place-editor">
+            {editingPlace ? "Done" : "Edit"}
+          </button>
         </div>
+
+        {editingPlace && (
+          <div id="place-editor" className="place-editor">
+            <input
+              type="search"
+              value={placeQuery}
+              onChange={(e) => setPlaceQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+              placeholder="Search a neighbourhood"
+              className="place-search"
+              aria-label="Search a neighbourhood"
+              autoFocus
+            />
+            <div className="place-options">
+              <button type="button" className="place-option gps" onClick={locateWithGps}>
+                Use my GPS
+              </button>
+              {places
+                .filter((p) => p.name.toLowerCase().includes(placeQuery.trim().toLowerCase()))
+                .map((p) => (
+                  <button
+                    key={p.name}
+                    type="button"
+                    className={`place-option${p.name === place.name ? " selected" : ""}`}
+                    onClick={() => pickPlace(p)}
+                  >
+                    {p.name}
+                  </button>
+                ))}
+            </div>
+            {placeError && <p className="form-error">{placeError}</p>}
+          </div>
+        )}
 
         <h1 className="question-title">Know what was filmed here?</h1>
         <p className="question-subtitle">Name the film and we'll line your frame up with the scene.</p>
@@ -303,7 +377,7 @@ export default function App() {
 
         <h1 className="scanning-title">Reading the frame</h1>
         <p className="scanning-subtitle">
-          {DEMO_LOCATION}, narrowing on “{movieQuery}”.
+          {place.name}, narrowing on “{movieQuery}”.
         </p>
 
         <div className="scanning-steps">
@@ -430,7 +504,6 @@ export default function App() {
       <MapView
         saved={saved}
         unlocking={justUnlocked}
-        placeName={PLACE_NAME}
         onShoot={startOver}
         dock={<Dock className="dock-floating" active="map" onShoot={startOver} onMap={() => {}} />}
       />

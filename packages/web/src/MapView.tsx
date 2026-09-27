@@ -4,12 +4,12 @@ import type { MatchResponse } from "@frame-one/shared";
 export interface SavedStamp {
   match: MatchResponse;
   photo: string | null;
+  placeName: string;
 }
 
 interface MapViewProps {
   saved: SavedStamp | null;
   unlocking: boolean;
-  placeName: string;
   onShoot: () => void;
   dock: ReactNode;
 }
@@ -130,7 +130,7 @@ function StampBadge() {
   );
 }
 
-export default function MapView({ saved, unlocking, placeName, onShoot, dock }: MapViewProps) {
+export default function MapView({ saved, unlocking, onShoot, dock }: MapViewProps) {
   const spot = saved ? project(saved.match.lat, saved.match.lng) : TIMES_SQUARE;
   const tx = CENTER.x - spot.x * ZOOM;
   const ty = CENTER.y - spot.y * ZOOM;
@@ -252,7 +252,7 @@ export default function MapView({ saved, unlocking, placeName, onShoot, dock }: 
             <StampBadge />
           </div>
           <h1 className="unlocked-title">
-            {placeName}
+            {saved.placeName}
             <br />
             is yours.
           </h1>
@@ -272,7 +272,7 @@ export default function MapView({ saved, unlocking, placeName, onShoot, dock }: 
                 <img src={saved.match.stillUrl} alt="" className="mini-inset" />
               </div>
               <div className="sheet-info">
-                <div className="sheet-title">{placeName}</div>
+                <div className="sheet-title">{saved.placeName}</div>
                 <div className="sheet-meta">
                   {saved.match.filmTitle} · {saved.match.year}
                 </div>
