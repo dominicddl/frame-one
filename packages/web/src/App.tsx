@@ -1,228 +1,504 @@
-import { useState, type CSSProperties } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { MatchResponse } from "@frame-one/shared";
-import { postMatch } from "./api/client";
+import { getSpots, postMatch } from "./api/client";
+import MapView, { type SavedStamp } from "./MapView";
+import "./tokens.css";
+import "./App.css";
 
-type Step =
-  | "capture"
-  | "context"
-  | "matching"
-  | "merge"
-  | "vantage"
-  | "map";
+type Step = "capture" | "questions" | "scanning" | "result" | "recreate" | "map";
 
-const DEMO_LAT = 40.758;
-const DEMO_LNG = -73.9855;
+interface Place {
+  name: string;
+  lat: number;
+  lng: number;
+}
 
-export default function App() {
-  const [step, setStep] = useState<Step>("capture");
-  const [movieQuery, setMovieQuery] = useState("Spider-Man");
-  const [match, setMatch] = useState<MatchResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+const DEFAULT_PLACE: Place = { name: "Times Square", lat: 40.758, lng: -73.9855 };
+const MIN_SCAN_MS = 2400;
 
-  async function runMatch() {
-    setLoading(true);
-    setError(null);
-    setStep("matching");
-    try {
-      const result = await postMatch({
-        lat: DEMO_LAT,
-        lng: DEMO_LNG,
-        movieQuery,
-      });
-      setMatch(result);
-      setStep(result.mergeOk ? "merge" : "vantage");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setStep("context");
-    } finally {
-      setLoading(false);
-    }
-  }
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
+function readFile(file: Blob, onLoad: (dataUrl: string) => void) {
+  const reader = new FileReader();
+  reader.onload = () => onLoad(reader.result as string);
+  reader.readAsDataURL(file);
+}
+
+function Dock({ active, onShoot, onMap, className = "" }: { active: "shoot" | "map"; onShoot: () => void; onMap: () => void; className?: string }) {
   return (
-    <div>
-      <header style={{ marginBottom: "1.5rem" }}>
-        <h1 style={{ margin: 0, fontSize: "1.5rem", letterSpacing: "0.05em" }}>
-          FRAME ONE
-        </h1>
-        <p style={{ margin: "0.25rem 0 0", opacity: 0.7, fontSize: "0.9rem" }}>
-          Movie Map — stub flow
-        </p>
-      </header>
-
-      <nav
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "0.35rem",
-          marginBottom: "1.25rem",
-          fontSize: "0.7rem",
-        }}
-      >
-        {(
-          [
-            "capture",
-            "context",
-            "matching",
-            "merge",
-            "vantage",
-            "map",
-          ] as Step[]
-        ).map((s) => (
-          <span
-            key={s}
-            style={{
-              padding: "0.2rem 0.5rem",
-              borderRadius: 999,
-              background: step === s ? "#e94560" : "#1a1a2e",
-              opacity: step === s ? 1 : 0.6,
-            }}
-          >
-            {s}
-          </span>
-        ))}
-      </nav>
-
-      {step === "capture" && (
-        <section>
-          <h2>1. Capture</h2>
-          <p style={{ opacity: 0.8 }}>
-            Stub: photo capture / upload lives here (getUserMedia).
-          </p>
-          <button
-            type="button"
-            onClick={() => setStep("context")}
-            style={btnStyle}
-          >
-            Next: Context
-          </button>
-        </section>
-      )}
-
-      {step === "context" && (
-        <section>
-          <h2>2. Context</h2>
-          <p style={{ opacity: 0.8 }}>
-            GPS pin: {DEMO_LAT}, {DEMO_LNG} (Times Square demo)
-          </p>
-          <label style={{ display: "block", marginBottom: "0.75rem" }}>
-            Movie / vibe
-            <input
-              value={movieQuery}
-              onChange={(e) => setMovieQuery(e.target.value)}
-              style={{
-                display: "block",
-                width: "100%",
-                marginTop: 4,
-                padding: "0.5rem",
-                borderRadius: 8,
-                border: "1px solid #333",
-                background: "#1a1a2e",
-                color: "#fff",
-              }}
-            />
-          </label>
-          <button
-            type="button"
-            onClick={runMatch}
-            disabled={loading}
-            style={btnStyle}
-          >
-            {loading ? "Matching…" : "Call POST /api/match"}
-          </button>
-          {error && (
-            <p style={{ color: "#e94560", marginTop: "0.75rem" }}>{error}</p>
-          )}
-        </section>
-      )}
-
-      {step === "matching" && (
-        <section>
-          <h2>3. Matching</h2>
-          <p>Your photo ↔ film scene…</p>
-        </section>
-      )}
-
-      {step === "merge" && match && (
-        <section>
-          <h2>4. Merge</h2>
-          <p>
-            Overlay <strong>{match.filmTitle}</strong> ({match.year}) — mergeOk:{" "}
-            <code>{String(match.mergeOk)}</code>
-          </p>
-          <img
-            src={`http://localhost:3001${match.stillUrl}`}
-            alt="film still"
-            style={{ width: "100%", borderRadius: 8 }}
-          />
-          <button
-            type="button"
-            onClick={() => setStep("map")}
-            style={{ ...btnStyle, marginTop: "0.75rem" }}
-          >
-            Unlock map
-          </button>
-          <pre>{JSON.stringify(match, null, 2)}</pre>
-        </section>
-      )}
-
-      {step === "vantage" && match && (
-        <section>
-          <h2>5. Vantage</h2>
-          <p>Stand here / shoot from this angle, then retake.</p>
-          <img
-            src={`http://localhost:3001${match.vantageUrl}`}
-            alt="vantage"
-            style={{ width: "100%", borderRadius: 8 }}
-          />
-          <button
-            type="button"
-            onClick={runMatch}
-            style={{ ...btnStyle, marginTop: "0.75rem" }}
-          >
-            Retake / re-match
-          </button>
-          <pre>{JSON.stringify(match, null, 2)}</pre>
-        </section>
-      )}
-
-      {step === "map" && (
-        <section>
-          <h2>6. Map unlock</h2>
-          <p style={{ opacity: 0.8 }}>
-            Stub: shadowed icon → colourful stamp; fog clears; goNext peeks.
-          </p>
-          {match && (
-            <ul>
-              {match.goNext.map((g) => (
-                <li key={g.spotId}>
-                  {g.label} ({g.lat.toFixed(4)}, {g.lng.toFixed(4)})
-                </li>
-              ))}
-            </ul>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              setMatch(null);
-              setStep("capture");
-            }}
-            style={btnStyle}
-          >
-            Start over
-          </button>
-        </section>
-      )}
-    </div>
+    <nav className={`dock ${className}`} aria-label="Main">
+      <button type="button" className={`dock-item${active === "shoot" ? " active" : ""}`} onClick={onShoot} aria-current={active === "shoot" ? "page" : undefined}>
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+          <rect x="2.5" y="6" width="15" height="11" rx="2.5" />
+          <circle cx="10" cy="11.5" r="3" />
+          <path d="M7 6l1.2-2.2h3.6L13 6" strokeLinejoin="round" />
+        </svg>
+        Shoot
+      </button>
+      <button type="button" className={`dock-item${active === "map" ? " active" : ""}`} onClick={onMap} aria-current={active === "map" ? "page" : undefined}>
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+          <path d="M2.5 5.5 7.5 3.5l5 2 5-2v11l-5 2-5-2-5 2z" strokeLinejoin="round" />
+          <path d="M7.5 3.5v11M12.5 5.5v11" />
+        </svg>
+        Map
+      </button>
+    </nav>
   );
 }
 
-const btnStyle: CSSProperties = {
-  background: "#e94560",
-  color: "#fff",
-  border: "none",
-  borderRadius: 8,
-  padding: "0.65rem 1rem",
-  width: "100%",
-};
+function BackIcon() {
+  return (
+    <svg width="19" height="19" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M12.5 4 6.5 10l6 6" stroke="#22262A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function UploadIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#22262A" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 13V4M6.5 7.5 10 4l3.5 3.5" />
+      <path d="M3.5 12.5v2a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-2" />
+    </svg>
+  );
+}
+
+function RetakeIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#22262A" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 8a7 7 0 0 1 11.6-3.3L17 7" />
+      <path d="M17 3.5V7h-3.5" />
+      <path d="M17 12a7 7 0 0 1-11.6 3.3L3 13" />
+      <path d="M3 16.5V13h3.5" />
+    </svg>
+  );
+}
+
+export default function App() {
+  const [step, setStep] = useState<Step>("capture");
+  const [movieQuery, setMovieQuery] = useState("");
+  const [match, setMatch] = useState<MatchResponse | null>(null);
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<SavedStamp | null>(null);
+  const [justUnlocked, setJustUnlocked] = useState(false);
+  const [place, setPlace] = useState<Place>(DEFAULT_PLACE);
+  const [editingPlace, setEditingPlace] = useState(false);
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [placeQuery, setPlaceQuery] = useState("");
+  const [placeError, setPlaceError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+    }
+  }, [cameraStream]);
+
+  useEffect(() => {
+    if (step !== "scanning") return;
+    let cancelled = false;
+    Promise.all([
+      postMatch({ lat: place.lat, lng: place.lng, movieQuery, photoDataUrl: photoDataUrl || undefined }),
+      wait(MIN_SCAN_MS),
+    ])
+      .then(([result]) => {
+        if (cancelled) return;
+        setMatch(result);
+        setStep("result");
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        console.error("Match failed:", e);
+        setError("Couldn't reach the matcher. Try again.");
+        setStep("questions");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [step]);
+
+  function stopCamera() {
+    cameraStream?.getTracks().forEach((track) => track.stop());
+    setCameraStream(null);
+  }
+
+  function acceptPhoto(dataUrl: string) {
+    stopCamera();
+    setPhotoDataUrl(dataUrl);
+  }
+
+  async function startCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+      setCameraStream(stream);
+    } catch (err) {
+      console.error("Camera access failed:", err);
+      fileInputRef.current?.click();
+    }
+  }
+
+  function capturePhoto() {
+    const video = videoRef.current;
+    if (!video) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d")?.drawImage(video, 0, 0);
+    acceptPhoto(canvas.toDataURL("image/jpeg", 0.9));
+  }
+
+  async function loadDemoPhoto() {
+    const response = await fetch("/demo/user-photo.jpg");
+    readFile(await response.blob(), acceptPhoto);
+  }
+
+  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file) readFile(file, acceptPhoto);
+  }
+
+  function retake() {
+    setPhotoDataUrl(null);
+    setStep("capture");
+  }
+
+  function toggleEditPlace() {
+    setEditingPlace(!editingPlace);
+    setPlaceError(null);
+    if (places.length) return;
+    getSpots()
+      .then((spots) => {
+        const byName = new Map(spots.map((s) => [s.neighbourhood, { name: s.neighbourhood, lat: s.lat, lng: s.lng }]));
+        setPlaces([...byName.values()]);
+      })
+      .catch(() => setPlaceError("Couldn't load places. Try again."));
+  }
+
+  function pickPlace(next: Place) {
+    setPlace(next);
+    setEditingPlace(false);
+    setPlaceQuery("");
+  }
+
+  function locateWithGps() {
+    if (!navigator.geolocation) {
+      setPlaceError("GPS isn't available here. Pick a place instead.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => pickPlace({ name: "Your location", lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => setPlaceError("Couldn't get your GPS. Pick a place instead."),
+      { enableHighAccuracy: true, timeout: 8000 },
+    );
+  }
+
+  function saveToMap() {
+    if (!match) return;
+    setSaved({ match, photo: photoDataUrl, placeName: place.name });
+    setJustUnlocked(true);
+    setStep("map");
+  }
+
+  function openMap() {
+    stopCamera();
+    setJustUnlocked(false);
+    setStep("map");
+  }
+
+  function startOver() {
+    setPhotoDataUrl(null);
+    setMatch(null);
+    setMovieQuery("");
+    setJustUnlocked(false);
+    setStep("capture");
+  }
+
+  if (step === "capture") {
+    const mode = cameraStream ? "camera" : photoDataUrl ? "preview" : "empty";
+    return (
+      <div className="screen capture">
+        <div className="location-pill">
+          <span className="dot blink" />
+          <span className="location-name">{place.name}</span>
+        </div>
+
+        <div className="capture-well">
+          {mode === "camera" && <video ref={videoRef} autoPlay playsInline muted className="well-media" />}
+          {mode === "preview" && photoDataUrl && <img src={photoDataUrl} alt="Your photo" className="well-media" />}
+          {mode !== "preview" && (
+            <div className="camera-brackets" aria-hidden="true">
+              <span className="bracket tl" />
+              <span className="bracket tr" />
+              <span className="bracket bl" />
+              <span className="bracket br" />
+            </div>
+          )}
+        </div>
+
+        <p className="instruction">{mode === "preview" ? "Ready to find the scene?" : "Point at somewhere you've seen in a film"}</p>
+
+        <div className="shutter-row">
+          {mode === "preview" ? (
+            <>
+              <button type="button" className="round-button" onClick={() => setPhotoDataUrl(null)} aria-label="Retake">
+                <RetakeIcon />
+              </button>
+              <button type="button" className="shutter wide" onClick={() => setStep("questions")}>
+                Continue
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" className="round-button demo-thumb" onClick={loadDemoPhoto} aria-label="Use the demo photo" />
+              <button type="button" className="shutter" onClick={mode === "camera" ? capturePhoto : startCamera} aria-label="Take the photo">
+                <svg width="30" height="30" viewBox="0 0 20 20" fill="none" stroke="#FFFFFF" strokeWidth="1.8" aria-hidden="true">
+                  <rect x="2" y="5.5" width="16" height="11.5" rx="3" />
+                  <circle cx="10" cy="11.2" r="3.4" />
+                  <path d="M7.4 5.5 8.7 3.2h2.6l1.3 2.3" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </>
+          )}
+          <button type="button" className="round-button" onClick={() => fileInputRef.current?.click()} aria-label="Upload a photo">
+            <UploadIcon />
+          </button>
+        </div>
+
+        <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleFileUpload} />
+        <Dock active="shoot" onShoot={() => {}} onMap={openMap} />
+      </div>
+    );
+  }
+
+  if (step === "questions") {
+    return (
+      <form
+        className="screen questions"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!movieQuery.trim()) return;
+          setError(null);
+          setStep("scanning");
+        }}
+      >
+        <button type="button" onClick={retake} className="back-link">
+          Retake
+        </button>
+
+        {photoDataUrl && <img src={photoDataUrl} alt="Your photo" className="context-photo" />}
+
+        <div className="location-card">
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <circle cx="10" cy="10" r="9" fill="#1C4C6B" />
+            <path d="m5.6 10.3 2.9 2.8 5.9-6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div className="location-info">
+            <span className="micro-label">Where you are</span>
+            <span className="location-title">{place.name}</span>
+          </div>
+          <button type="button" className="edit-button" onClick={toggleEditPlace} aria-expanded={editingPlace} aria-controls="place-editor">
+            {editingPlace ? "Done" : "Edit"}
+          </button>
+        </div>
+
+        {editingPlace && (
+          <div id="place-editor" className="place-editor">
+            <input
+              type="search"
+              value={placeQuery}
+              onChange={(e) => setPlaceQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+              placeholder="Search a neighbourhood"
+              className="place-search"
+              aria-label="Search a neighbourhood"
+              autoFocus
+            />
+            <div className="place-options">
+              <button type="button" className="place-option gps" onClick={locateWithGps}>
+                Use my GPS
+              </button>
+              {places
+                .filter((p) => p.name.toLowerCase().includes(placeQuery.trim().toLowerCase()))
+                .map((p) => (
+                  <button
+                    key={p.name}
+                    type="button"
+                    className={`place-option${p.name === place.name ? " selected" : ""}`}
+                    onClick={() => pickPlace(p)}
+                  >
+                    {p.name}
+                  </button>
+                ))}
+            </div>
+            {placeError && <p className="form-error">{placeError}</p>}
+          </div>
+        )}
+
+        <h1 className="question-title">Know what was filmed here?</h1>
+        <p className="question-subtitle">Name the film. We'll find the scene.</p>
+
+        <label htmlFor="movie-input" className="micro-label">
+          The film
+        </label>
+        <input
+          id="movie-input"
+          type="text"
+          value={movieQuery}
+          onChange={(e) => setMovieQuery(e.target.value)}
+          placeholder="e.g. The Amazing Spider-Man 2"
+          className="movie-input"
+          autoComplete="off"
+          autoFocus
+        />
+        {error && <p className="form-error">{error}</p>}
+
+        <div className="spacer" />
+
+        <button type="submit" disabled={!movieQuery.trim()} className="primary-button">
+          Find the scene
+        </button>
+      </form>
+    );
+  }
+
+  if (step === "scanning") {
+    return (
+      <div className="screen scanning">
+        <div className="frozen-frame">
+          {photoDataUrl && <img src={photoDataUrl} alt="" />}
+          <div className="scan-line" />
+        </div>
+
+        <h1 className="scanning-title">Reading the frame</h1>
+        <p className="scanning-subtitle">
+          {place.name}, narrowing on “{movieQuery}”.
+        </p>
+
+        <div className="scanning-steps">
+          <div className="step done">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <circle cx="10" cy="10" r="9" fill="#1C4C6B" />
+              <path d="m5.6 10.3 2.9 2.8 5.9-6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span>Scenes filmed near you</span>
+          </div>
+          <div className="step active">
+            <span className="spinner" />
+            <span>Matching the skyline</span>
+          </div>
+          <div className="step waiting">
+            <span className="spinner" />
+            <span>Locking the camera position</span>
+          </div>
+        </div>
+
+        <div className="spacer" />
+        <button type="button" onClick={() => setStep("questions")} className="text-link">
+          Cancel
+        </button>
+      </div>
+    );
+  }
+
+  if (step === "result" && match) {
+    return (
+      <div className="screen result">
+        <button type="button" onClick={retake} className="back-button" aria-label="Back to the camera">
+          <BackIcon />
+        </button>
+
+        <h1 className="verdict">Exact match.</h1>
+
+        <div className="frame-row">
+          <figure className="frame-col">
+            <div className="frame-well">{photoDataUrl && <img src={photoDataUrl} alt="Your photo" />}</div>
+            <figcaption className="frame-label">Yours</figcaption>
+          </figure>
+          <figure className="frame-col">
+            <div className="frame-well">
+              <img src={match.stillUrl} alt={`Still from ${match.filmTitle}`} />
+              <video autoPlay muted loop playsInline aria-hidden="true">
+                <source src={`/assets/spots/${match.spotId}/clip.mp4`} type="video/mp4" />
+                <source src={`/assets/spots/${match.spotId}/clip.webm`} type="video/webm" />
+              </video>
+            </div>
+            <figcaption className="frame-label">Film</figcaption>
+          </figure>
+        </div>
+
+        <div className="film-card">
+          <h2 className="film-title">{match.filmTitle}</h2>
+          <div className="film-meta">{match.year} · Filmed right where you're standing.</div>
+        </div>
+
+        <button type="button" onClick={() => setStep("recreate")} className="primary-button">
+          Recreate this shot
+        </button>
+        <button type="button" onClick={saveToMap} className="text-link">
+          Just save it
+        </button>
+      </div>
+    );
+  }
+
+  if (step === "recreate" && match) {
+    return (
+      <div className="screen recreate">
+        <div className="recreate-header">
+          <button type="button" onClick={() => setStep("result")} className="back-button" aria-label="Back to the match">
+            <BackIcon />
+          </button>
+          <h1 className="recreate-title">Recreate</h1>
+        </div>
+
+        <div className="merge-well">
+          {photoDataUrl && <img src={photoDataUrl} alt="Your photo" className="merge-base" />}
+          <div className="merge-inset-wrap">
+            <img src={match.stillUrl} alt={`Still from ${match.filmTitle}`} className="merge-inset" />
+          </div>
+        </div>
+
+        {match.mergeOk ? (
+          <p className="merge-copy">
+            Your shot, with the film frame on top.
+          </p>
+        ) : (
+          <div className="vantage-hint">
+            <img src={match.vantageUrl} alt="Where the film camera stood" />
+            <p>
+              Not quite the angle. Stand where this was shot, then{" "}
+              <button type="button" className="inline-link" onClick={retake}>
+                retake
+              </button>
+              .
+            </p>
+          </div>
+        )}
+
+        <button type="button" onClick={saveToMap} className="primary-button">
+          Save on map
+        </button>
+      </div>
+    );
+  }
+
+  if (step === "map") {
+    return (
+      <MapView
+        saved={saved}
+        unlocking={justUnlocked}
+        home={place}
+        onShoot={startOver}
+        dock={<Dock className="dock-floating" active="map" onShoot={startOver} onMap={() => {}} />}
+      />
+    );
+  }
+
+  return null;
+}
