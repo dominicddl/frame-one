@@ -1176,6 +1176,11 @@ figure {
   animation: pin-pop 360ms var(--ease-pop) both;
 }
 
+.stamp-pin:has(.has-art) {
+  width: 46px;
+  height: 46px;
+}
+
 .stamp-pin.is-settled {
   animation: none;
   transform: rotate(-5deg);

@@ -487,7 +487,11 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
       el.setAttribute("aria-label", isUnlocked ? `${s.filmTitle}, collected` : `Uncollected film spot, ${s.neighbourhood}`);
       el.tabIndex = 0;
       el.innerHTML = isUnlocked
-        ? `<div class="stamp-pin${settled ? " is-settled" : ""}"${popStyle}>${isSlam ? '<span class="stamp-ripple"></span>' : ""}<span class="stamp-face">${CLAPPER}</span></div>`
+        ? `<div class="stamp-pin${settled ? " is-settled" : ""}"${popStyle}>${isSlam ? '<span class="stamp-ripple"></span>' : ""}${
+            STAMP_SPOTS.includes(s.spotId)
+              ? `<span class="stamp-face has-art"><img src="/stamps/${s.spotId}.svg" alt="" draggable="false"></span>`
+              : `<span class="stamp-face">${CLAPPER}</span>`
+          }</div>`
         : `<div class="peek-pin">?</div>`;
       el.style.zIndex = isUnlocked ? "2" : "1";
       // Negative delay resumes a slam already in flight if markers get rebuilt mid-animation
