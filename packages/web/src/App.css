@@ -45,7 +45,7 @@ figure {
   border: none;
   border-radius: 20px;
   color: var(--on-action);
-  box-shadow: 0 10px 26px rgba(28, 76, 107, 0.45);
+  box-shadow: 0 10px 26px rgba(232, 122, 42, 0.4);
   cursor: pointer;
   transition: transform 0.2s;
   font-size: 17px;
@@ -242,7 +242,7 @@ figure {
   background: var(--action);
   border: none;
   border-radius: 38px;
-  box-shadow: 0 10px 26px rgba(28, 76, 107, 0.5);
+  box-shadow: 0 10px 26px rgba(232, 122, 42, 0.45);
   cursor: pointer;
   animation: pop 400ms var(--ease-pop) 180ms both;
   transition: transform 0.2s;
@@ -456,7 +456,7 @@ figure {
 
 .movie-input:focus {
   outline: none;
-  box-shadow: 0 0 0 4px rgba(28, 76, 107, 0.15);
+  box-shadow: 0 0 0 4px rgba(232, 122, 42, 0.15);
 }
 
 .form-error {
@@ -494,8 +494,8 @@ figure {
   top: 0;
   width: 100%;
   height: 3px;
-  background: #5ea3ff;
-  box-shadow: 0 0 24px 6px rgba(94, 163, 255, 0.7);
+  background: #e87a2a;
+  box-shadow: 0 0 24px 6px rgba(232, 122, 42, 0.7);
   animation: sweep 2.1s ease-in-out infinite alternate;
 }
 
@@ -774,6 +774,24 @@ figure {
   }
 }
 
+/* Capture flash animation (≤300ms shutter feel) */
+.capture-flash {
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  z-index: 10;
+  animation: flash-burst 200ms ease-out forwards;
+}
+
+@keyframes flash-burst {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 .align-placeholder {
   position: absolute;
   inset: 0;
@@ -798,6 +816,104 @@ figure {
 .recreate-stamp {
   display: flex;
   flex-direction: column;
+}
+
+/* Polaroid frame styling */
+.polaroid-frame {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  animation: polaroid-in 400ms var(--ease-pop) both;
+}
+
+@keyframes polaroid-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92) rotate(-2deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.polaroid-photo {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  margin: 10px 10px 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #16130f;
+}
+
+.polaroid-base {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.polaroid-cutout-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.polaroid-cutout {
+  display: block;
+  width: 50%;
+  height: auto;
+  border: 3px solid #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  animation: cutout-in 500ms var(--ease-pop) 150ms both;
+}
+
+@keyframes cutout-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.polaroid-label {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 64px;
+  padding: 8px 16px;
+}
+
+.polaroid-film {
+  color: #2a241f;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 18px;
+  line-height: 22px;
+  text-align: center;
+}
+
+.polaroid-year {
+  color: #8a8580;
+  font-size: 12px;
+  margin-top: 2px;
 }
 
 .merge-copy {
@@ -1133,7 +1249,7 @@ figure {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  box-shadow: 0 4px 12px rgba(28, 76, 107, 0.35);
+  box-shadow: 0 4px 12px rgba(232, 122, 42, 0.35);
   animation: chip-pop 380ms var(--ease-pop) both;
 }
 

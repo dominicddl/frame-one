@@ -107,6 +107,7 @@ export default function App() {
   const [recreateSubStep, setRecreateSubStep] = useState<"align" | "stamp">("align");
   const [recreatePhotoUrl, setRecreatePhotoUrl] = useState<string | null>(null);
   const [recreateCameraStream, setRecreateCameraStream] = useState<MediaStream | null>(null);
+  const [showFlash, setShowFlash] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const recreateVideoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -261,9 +262,16 @@ export default function App() {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext("2d")?.drawImage(video, 0, 0);
-    stopRecreateCamera();
-    setRecreatePhotoUrl(canvas.toDataURL("image/jpeg", 0.9));
-    setRecreateSubStep("stamp");
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+    
+    // Trigger flash animation (≤300ms shutter feel)
+    setShowFlash(true);
+    setTimeout(() => {
+      setShowFlash(false);
+      stopRecreateCamera();
+      setRecreatePhotoUrl(dataUrl);
+      setRecreateSubStep("stamp");
+    }, 200);
   }
 
   function handleRecreateFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -355,9 +363,8 @@ export default function App() {
     setStep("map");
   }
 
-  // Download merged overlay image
+  // Download polaroid image file
   const downloadOverlay = useCallback(async () => {
-    // Use recreate photo if available, otherwise original
     const sourcePhoto = recreatePhotoUrl || photoDataUrl;
     if (!match || !sourcePhoto) return;
     const canvas = document.createElement("canvas");
@@ -372,12 +379,24 @@ export default function App() {
       userImg.src = sourcePhoto;
     });
 
-    // Set canvas size to user photo
-    canvas.width = userImg.width;
-    canvas.height = userImg.height;
-    ctx.drawImage(userImg, 0, 0);
+    // Polaroid frame: white border with larger bottom for label
+    const borderSide = 20;
+    const borderTop = 20;
+    const borderBottom = 64;
+    const photoWidth = userImg.width;
+    const photoHeight = userImg.height;
+    
+    canvas.width = photoWidth + borderSide * 2;
+    canvas.height = photoHeight + borderTop + borderBottom;
 
-    // Load film still
+    // White polaroid background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw user photo as polaroid body
+    ctx.drawImage(userImg, borderSide, borderTop, photoWidth, photoHeight);
+
+    // Load film still for centered cutout
     const filmImg = new Image();
     filmImg.crossOrigin = "anonymous";
     await new Promise<void>((resolve, reject) => {
@@ -387,25 +406,35 @@ export default function App() {
     }).catch(() => {});
 
     if (filmImg.complete && filmImg.naturalWidth > 0) {
-      // Draw film still as inset (70% width, centered)
-      const insetWidth = canvas.width * 0.7;
-      const insetHeight = (filmImg.height / filmImg.width) * insetWidth;
-      const insetX = (canvas.width - insetWidth) / 2;
-      const insetY = (canvas.height - insetHeight) / 2;
+      // Draw film cutout centered (50% width)
+      const cutoutWidth = photoWidth * 0.5;
+      const cutoutHeight = (filmImg.height / filmImg.width) * cutoutWidth;
+      const cutoutX = borderSide + (photoWidth - cutoutWidth) / 2;
+      const cutoutY = borderTop + (photoHeight - cutoutHeight) / 2;
 
-      // White border
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(insetX - 4, insetY - 4, insetWidth + 8, insetHeight + 8);
-      ctx.drawImage(filmImg, insetX, insetY, insetWidth, insetHeight);
-
-      // Add film title watermark
-      ctx.font = "bold 16px system-ui, sans-serif";
-      ctx.fillStyle = "rgba(255,255,255,0.9)";
-      ctx.textAlign = "center";
-      ctx.fillText(`${match.filmTitle} (${match.year})`, canvas.width / 2, canvas.height - 20);
+      // White border + shadow for cutout
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(cutoutX - 3, cutoutY - 3, cutoutWidth + 6, cutoutHeight + 6);
+      ctx.shadowColor = "rgba(0, 0, 0, 0.25)";
+      ctx.shadowBlur = 8;
+      ctx.shadowOffsetY = 3;
+      ctx.drawImage(filmImg, cutoutX, cutoutY, cutoutWidth, cutoutHeight);
+      ctx.shadowColor = "transparent";
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
     }
 
-    // Download
+    // Film title in bottom polaroid area
+    ctx.font = "italic 20px Georgia, serif";
+    ctx.fillStyle = "#2a241f";
+    ctx.textAlign = "center";
+    ctx.fillText(match.filmTitle, canvas.width / 2, canvas.height - borderBottom / 2 + 6);
+    
+    ctx.font = "13px system-ui, sans-serif";
+    ctx.fillStyle = "#8a8580";
+    ctx.fillText(String(match.year), canvas.width / 2, canvas.height - borderBottom / 2 + 24);
+
+    // Download as real image file
     const link = document.createElement("a");
     link.download = `frame-one-${match.spotId}.jpg`;
     link.href = canvas.toDataURL("image/jpeg", 0.92);
@@ -638,13 +667,16 @@ export default function App() {
   }
 
   if (step === "result" && match) {
+    // BLOCKER 2: Softer copy for medium confidence
+    const verdictCopy = match.matchConfidence === "high" ? "Exact match." : "Likely match.";
+    
     return (
       <div className="screen result">
         <button type="button" onClick={retake} className="back-button" aria-label="Back to the camera">
           <BackIcon />
         </button>
 
-        <h1 className="verdict">Exact match.</h1>
+        <h1 className="verdict">{verdictCopy}</h1>
 
         <div className="frame-row">
           <figure className="frame-col">
@@ -791,6 +823,7 @@ export default function App() {
             <div className="align-ghost-wrap">
               <img src={match.stillUrl} alt={`Still from ${match.filmTitle}`} className="align-ghost" />
             </div>
+            {showFlash && <div className="capture-flash" />}
           </div>
 
           <p className="align-hint">Move until the scene aligns, then capture.</p>
@@ -821,25 +854,31 @@ export default function App() {
       );
     }
 
-    // Sub-step "stamp": composite shown, ready for save/download
+    // Sub-step "stamp": polaroid composite, ready for save/download
     return (
       <div className="screen recreate recreate-stamp">
         <div className="recreate-header">
-          <button type="button" onClick={() => setRecreateSubStep("align")} className="back-button" aria-label="Retake">
+          <button type="button" onClick={() => { setRecreateSubStep("align"); startRecreateCamera(); }} className="back-button" aria-label="Retake">
             <BackIcon />
           </button>
-          <h1 className="recreate-title">Your recreation</h1>
+          <h1 className="recreate-title">Your polaroid</h1>
         </div>
 
-        <div className="merge-well">
-          {recreatePhotoUrl && <img src={recreatePhotoUrl} alt="Your recreated photo" className="merge-base" />}
-          <div className="merge-inset-wrap">
-            <img src={match.stillUrl} alt={`Still from ${match.filmTitle}`} className="merge-inset-stamp" />
+        <div className="polaroid-frame">
+          <div className="polaroid-photo">
+            {recreatePhotoUrl && <img src={recreatePhotoUrl} alt="Your recreated photo" className="polaroid-base" />}
+            <div className="polaroid-cutout-wrap">
+              <img src={match.stillUrl} alt={`Still from ${match.filmTitle}`} className="polaroid-cutout" />
+            </div>
+          </div>
+          <div className="polaroid-label">
+            <span className="polaroid-film">{match.filmTitle}</span>
+            <span className="polaroid-year">{match.year}</span>
           </div>
         </div>
 
         <p className="merge-copy">
-          Your shot with the film frame. Save it to your map!
+          Your shot with the film still. Save it to your map!
         </p>
 
         <div className="recreate-actions">
