@@ -406,6 +406,30 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
           <div className="sheet-unlocked">
             <div className="sheet-title">{unlocks.length} stamp{unlocks.length !== 1 ? "s" : ""} collected</div>
             <p className="sheet-meta">Keep exploring to unlock more film locations.</p>
+            {/* Derive go-next from remaining locked spots for ?demo=1 */}
+            {(() => {
+              const lockedSpots = filteredSpots.filter((s) => !unlocks.includes(s.spotId)).slice(0, 3);
+              if (lockedSpots.length === 0) return null;
+              return (
+                <div className="go-next">
+                  <div className="micro-label">Where to go next</div>
+                  {lockedSpots.map((spot) => (
+                    <button
+                      key={spot.spotId}
+                      type="button"
+                      className="go-next-item"
+                      onClick={() => openDirections(spot.lat, spot.lng)}
+                    >
+                      <span className="go-next-q">?</span>
+                      <span className="go-next-text">
+                        <span className="go-next-film">{spot.filmTitle}</span>
+                        <span className="go-next-area">{spot.neighbourhood}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
             <button type="button" className="primary-button" onClick={onShoot}>
               Find another
             </button>

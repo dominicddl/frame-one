@@ -15,7 +15,7 @@ export async function postMatch(body: MatchRequest): Promise<MatchResponse> {
   return res.json() as Promise<MatchResponse>;
 }
 
-export type SpotSummary = Pick<Spot, "spotId" | "neighbourhood" | "lat" | "lng">;
+export type SpotSummary = Pick<Spot, "spotId" | "filmTitle" | "neighbourhood" | "lat" | "lng">;
 
 export async function getSpots(): Promise<SpotSummary[]> {
   const res = await fetch(`${API_URL}/api/spots`);

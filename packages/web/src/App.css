@@ -1347,14 +1347,16 @@ figure {
   position: absolute;
   top: calc(72px + env(safe-area-inset-top));
   left: 16px;
-  right: 16px;
+  right: 0;
   z-index: 5;
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  padding-right: 16px;
   animation: fade 300ms ease-out 100ms both;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  scroll-padding-left: 16px;
 }
 
 .trail-filters::-webkit-scrollbar {
@@ -1367,7 +1369,7 @@ figure {
   flex-shrink: 0;
   align-items: center;
   height: 32px;
-  padding: 0 14px;
+  padding: 0 12px;
   background: #f7f1ea;
   border: 1px solid rgba(42, 36, 31, 0.12);
   border-radius: 999px;
