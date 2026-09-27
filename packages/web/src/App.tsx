@@ -104,8 +104,13 @@ export default function App() {
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [suggestions, setSuggestions] = useState<SoftMissSuggestion[]>([]);
   const [spotsCache, setSpotsCache] = useState<{ spotId: string; lat: number; lng: number; neighbourhood: string }[]>([]);
+  const [recreateSubStep, setRecreateSubStep] = useState<"align" | "stamp">("align");
+  const [recreatePhotoUrl, setRecreatePhotoUrl] = useState<string | null>(null);
+  const [recreateCameraStream, setRecreateCameraStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const recreateVideoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const recreateFileInputRef = useRef<HTMLInputElement>(null);
 
   // Use the useUnlocks hook as the single source of truth
   const { unlocks, unlock, seedDemo } = useUnlocks();
@@ -123,6 +128,12 @@ export default function App() {
       videoRef.current.srcObject = cameraStream;
     }
   }, [cameraStream]);
+
+  useEffect(() => {
+    if (recreateCameraStream && recreateVideoRef.current) {
+      recreateVideoRef.current.srcObject = recreateCameraStream;
+    }
+  }, [recreateCameraStream]);
 
   useEffect(() => {
     if (step !== "scanning") return;
@@ -227,6 +238,59 @@ export default function App() {
     setStep("capture");
   }
 
+  // Recreate camera functions
+  function stopRecreateCamera() {
+    recreateCameraStream?.getTracks().forEach((track) => track.stop());
+    setRecreateCameraStream(null);
+  }
+
+  async function startRecreateCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+      setRecreateCameraStream(stream);
+    } catch (err) {
+      console.error("Recreate camera access failed:", err);
+      recreateFileInputRef.current?.click();
+    }
+  }
+
+  function captureRecreatePhoto() {
+    const video = recreateVideoRef.current;
+    if (!video) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d")?.drawImage(video, 0, 0);
+    stopRecreateCamera();
+    setRecreatePhotoUrl(canvas.toDataURL("image/jpeg", 0.9));
+    setRecreateSubStep("stamp");
+  }
+
+  function handleRecreateFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file) {
+      readFile(file, (dataUrl) => {
+        setRecreatePhotoUrl(dataUrl);
+        setRecreateSubStep("stamp");
+      });
+    }
+  }
+
+  function goToRecreate() {
+    setRecreatePhotoUrl(null);
+    setRecreateSubStep("align");
+    setStep("recreate");
+    startRecreateCamera();
+  }
+
+  function backFromRecreate() {
+    stopRecreateCamera();
+    setRecreatePhotoUrl(null);
+    setRecreateSubStep("align");
+    setStep("result");
+  }
+
   function toggleEditPlace() {
     setEditingPlace(!editingPlace);
     setPlaceError(null);
@@ -282,16 +346,20 @@ export default function App() {
 
   function saveToMap() {
     if (!match) return;
-    // Add unlock via the hook (keeps state in sync)
+    // Use the recreate photo for the saved stamp (not original recognize photo)
+    const finalPhoto = recreatePhotoUrl || photoDataUrl;
     unlock(match.spotId);
-    setSaved({ match, photo: photoDataUrl, placeName: place.name });
+    setSaved({ match, photo: finalPhoto, placeName: place.name });
+    stopRecreateCamera();
     setJustUnlocked(true);
     setStep("map");
   }
 
   // Download merged overlay image
   const downloadOverlay = useCallback(async () => {
-    if (!match || !photoDataUrl) return;
+    // Use recreate photo if available, otherwise original
+    const sourcePhoto = recreatePhotoUrl || photoDataUrl;
+    if (!match || !sourcePhoto) return;
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -301,7 +369,7 @@ export default function App() {
     userImg.crossOrigin = "anonymous";
     await new Promise<void>((resolve) => {
       userImg.onload = () => resolve();
-      userImg.src = photoDataUrl;
+      userImg.src = sourcePhoto;
     });
 
     // Set canvas size to user photo
@@ -342,7 +410,7 @@ export default function App() {
     link.download = `frame-one-${match.spotId}.jpg`;
     link.href = canvas.toDataURL("image/jpeg", 0.92);
     link.click();
-  }, [match, photoDataUrl]);
+  }, [match, photoDataUrl, recreatePhotoUrl]);
 
   function openMap() {
     stopCamera();
@@ -600,7 +668,7 @@ export default function App() {
           <div className="film-meta">{match.year} · Filmed right where you're standing.</div>
         </div>
 
-        <button type="button" onClick={() => setStep("recreate")} className="primary-button">
+        <button type="button" onClick={goToRecreate} className="primary-button">
           Recreate this shot
         </button>
       </div>
@@ -692,38 +760,87 @@ export default function App() {
   }
 
   if (step === "recreate" && match) {
+    // Sub-step "align": camera with ghost overlay for alignment
+    if (recreateSubStep === "align") {
+      return (
+        <div className="screen recreate recreate-align">
+          <div className="recreate-header">
+            <button type="button" onClick={backFromRecreate} className="back-button" aria-label="Back to the match">
+              <BackIcon />
+            </button>
+            <h1 className="recreate-title">Line up with the scene</h1>
+          </div>
+
+          <div className="align-viewfinder">
+            {recreateCameraStream ? (
+              <video
+                ref={recreateVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className="align-camera"
+              />
+            ) : (
+              <div className="align-placeholder">
+                <p>Camera not available</p>
+                <button type="button" className="secondary-button" onClick={() => recreateFileInputRef.current?.click()}>
+                  Upload a photo
+                </button>
+              </div>
+            )}
+            <div className="align-ghost-wrap">
+              <img src={match.stillUrl} alt={`Still from ${match.filmTitle}`} className="align-ghost" />
+            </div>
+          </div>
+
+          <p className="align-hint">Move until the scene aligns, then capture.</p>
+
+          <div className="recreate-actions">
+            <button
+              type="button"
+              onClick={captureRecreatePhoto}
+              className="primary-button"
+              disabled={!recreateCameraStream}
+            >
+              Capture
+            </button>
+            <button type="button" className="text-link" onClick={() => recreateFileInputRef.current?.click()}>
+              Or upload a photo
+            </button>
+          </div>
+
+          <input
+            ref={recreateFileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleRecreateFileUpload}
+            hidden
+          />
+        </div>
+      );
+    }
+
+    // Sub-step "stamp": composite shown, ready for save/download
     return (
-      <div className="screen recreate">
+      <div className="screen recreate recreate-stamp">
         <div className="recreate-header">
-          <button type="button" onClick={() => setStep("result")} className="back-button" aria-label="Back to the match">
+          <button type="button" onClick={() => setRecreateSubStep("align")} className="back-button" aria-label="Retake">
             <BackIcon />
           </button>
-          <h1 className="recreate-title">Recreate</h1>
+          <h1 className="recreate-title">Your recreation</h1>
         </div>
 
         <div className="merge-well">
-          {photoDataUrl && <img src={photoDataUrl} alt="Your photo" className="merge-base" />}
+          {recreatePhotoUrl && <img src={recreatePhotoUrl} alt="Your recreated photo" className="merge-base" />}
           <div className="merge-inset-wrap">
-            <img src={match.stillUrl} alt={`Still from ${match.filmTitle}`} className="merge-inset" />
+            <img src={match.stillUrl} alt={`Still from ${match.filmTitle}`} className="merge-inset-stamp" />
           </div>
         </div>
 
-        {match.mergeOk ? (
-          <p className="merge-copy">
-            Line up with the scene. Move until edges match.
-          </p>
-        ) : (
-          <div className="vantage-hint">
-            <img src={match.vantageUrl} alt="Where the film camera stood" />
-            <p>
-              Line up with the scene. Stand where the camera was, then{" "}
-              <button type="button" className="inline-link" onClick={retake}>
-                retake
-              </button>
-              .
-            </p>
-          </div>
-        )}
+        <p className="merge-copy">
+          Your shot with the film frame. Save it to your map!
+        </p>
 
         <div className="recreate-actions">
           <button type="button" onClick={saveToMap} className="primary-button">
