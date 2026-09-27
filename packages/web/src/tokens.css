@@ -48,6 +48,7 @@
 
   /* Typography */
   --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: ui-serif, Georgia, "Times New Roman", serif;
 
   /* Easing */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
