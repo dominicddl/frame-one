@@ -1,7 +1,10 @@
-import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import maplibregl, { type Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { MatchResponse } from "@frame-one/shared";
+import { getSpots, type SpotSummary } from "./api/client";
+import { getUnlockedSpotIds } from "./map/unlocks";
+import { TRAIL_FILTERS, type TrailFilterId } from "./map/trails";
 
 export interface SavedStamp {
   match: MatchResponse;
@@ -162,8 +165,20 @@ function StampBadge() {
 export default function MapView({ saved, unlocking, home, onShoot, dock }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const cloudsRef = useRef<HTMLDivElement>(null);
+  const [spots, setSpots] = useState<SpotSummary[]>([]);
+  const [trailFilter, setTrailFilter] = useState<TrailFilterId>("all");
   const focus = saved ? { lat: saved.match.lat, lng: saved.match.lng } : home;
   const next = saved?.match.goNext ?? [];
+
+  useEffect(() => {
+    getSpots().then(setSpots).catch(console.error);
+  }, []);
+
+  const unlockedIds = getUnlockedSpotIds();
+  const filteredSpots = spots.filter((spot) => {
+    const config = TRAIL_FILTERS[trailFilter];
+    return config.spotIds === null || config.spotIds.includes(spot.spotId);
+  });
 
   useEffect(() => {
     const el = mapRef.current;
@@ -192,22 +207,59 @@ export default function MapView({ saved, unlocking, home, onShoot, dock }: MapVi
       });
     }
 
-    const trackHole = () => {
-      const p = map.project([focus.lng, focus.lat]);
+    filteredSpots.forEach((spot) => {
+      const isUnlocked = unlockedIds.includes(spot.spotId);
+      const isSaved = saved && saved.match.spotId === spot.spotId;
+      if (isSaved) return;
+
+      const html = isUnlocked
+        ? `<div class="stamp-pin unlocked-stamp"><span class="stamp-face">${CLAPPER}</span></div>`
+        : `<div class="peek-pin">?</div>`;
+      new maplibregl.Marker({ element: markerEl(html) }).setLngLat([spot.lng, spot.lat]).addTo(map);
+    });
+
+    if (!saved && next.length === 0 && filteredSpots.length > 0) {
+      const unlockedSpots = filteredSpots.filter((s) => unlockedIds.includes(s.spotId));
+      const goNextSpots = unlockedSpots.length > 0 ? unlockedSpots.slice(0, 2) : filteredSpots.slice(0, 2);
+      goNextSpots.forEach((spot, i) => {
+        const pin = `<div class="go-chip" style="animation-delay: ${600 + i * 90}ms">${spot.neighbourhood}</div>`;
+        new maplibregl.Marker({ element: markerEl(pin), anchor: "bottom" }).setLngLat([spot.lng, spot.lat]).addTo(map);
+      });
+    }
+
+    const unlockedSpots = filteredSpots.filter((s) => unlockedIds.includes(s.spotId));
+    const trackHoles = () => {
+      const positions = unlockedSpots.map((s) => {
+        const p = map.project([s.lng, s.lat]);
+        return `radial-gradient(circle at ${p.x}px ${p.y}px, transparent calc(220px * ${2 ** (map.getZoom() - ZOOM)} * 0.72), #000 calc(220px * ${2 ** (map.getZoom() - ZOOM)}))`;
+      });
+
+      if (saved) {
+        const p = map.project([focus.lng, focus.lat]);
+        const z = 2 ** (map.getZoom() - ZOOM);
+        positions.unshift(`radial-gradient(circle at ${p.x}px ${p.y}px, transparent calc(220px * ${z} * 0.72), #000 calc(220px * ${z}))`);
+      }
+
       const style = cloudsRef.current?.style;
-      style?.setProperty("--hx", `${p.x}px`);
-      style?.setProperty("--hy", `${p.y}px`);
-      style?.setProperty("--hz", String(2 ** (map.getZoom() - ZOOM)));
+      if (positions.length > 0) {
+        style?.setProperty("-webkit-mask-image", positions.join(", "));
+        style?.setProperty("mask-image", positions.join(", "));
+        style?.setProperty("-webkit-mask-composite", "source-in");
+        style?.setProperty("mask-composite", "intersect");
+      }
     };
-    trackHole();
-    map.on("move", trackHole);
+    trackHoles();
+    map.on("move", trackHoles);
     return () => {
       map.remove();
     };
-  }, [saved, focus.lat, focus.lng]);
+  }, [saved, focus.lat, focus.lng, filteredSpots, unlockedIds, next.length]);
+
+  const unlockedSpots = spots.filter((s) => unlockedIds.includes(s.spotId));
+  const stampCount = saved ? unlockedSpots.length + 1 : unlockedSpots.length;
 
   return (
-    <div className={`screen map-screen${unlocking ? " unlocking" : ""}${saved ? " has-hole" : ""}`}>
+    <div className={`screen map-screen${unlocking ? " unlocking" : ""}${unlockedSpots.length > 0 || saved ? " has-holes" : ""}`}>
       <div ref={mapRef} className="map-canvas" />
       <div ref={cloudsRef} className="cloud-layer">
         <Clouds />
@@ -215,8 +267,28 @@ export default function MapView({ saved, unlocking, home, onShoot, dock }: MapVi
 
       <div className="map-header">
         <span className="map-title">New York</span>
-        <span className="map-count">{saved ? "1 stamp" : "No stamps yet"}</span>
+        <span className="map-count">{stampCount > 0 ? `${stampCount} stamp${stampCount > 1 ? "s" : ""}` : "No stamps yet"}</span>
       </div>
+
+      <div className="trail-filters">
+        {(Object.keys(TRAIL_FILTERS) as TrailFilterId[]).map((key) => {
+          const config = TRAIL_FILTERS[key];
+          const isActive = trailFilter === key;
+          const colorVar = key === "marvel" ? "--trail-marvel" : key === "romcom" ? "--trail-romcom" : key === "dark" ? "--trail-monsters" : null;
+          return (
+            <button
+              key={key}
+              type="button"
+              className={`trail-chip${isActive ? " active" : ""}`}
+              style={colorVar ? ({ "--trail-color": `var(${colorVar})` } as CSSProperties) : undefined}
+              onClick={() => setTrailFilter(key)}
+            >
+              {config.label}
+            </button>
+          );
+        })}
+      </div>
+
       <a className="osm-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
         © OpenStreetMap contributors · OpenFreeMap
       </a>

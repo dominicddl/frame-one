@@ -803,6 +803,48 @@ figure {
   animation: pin-pop 360ms var(--ease-pop) both;
 }
 
+.unlocked-stamp {
+  opacity: 0.95;
+  filter: saturate(1.1);
+}
+
+.peek-pin {
+  font-family: var(--font-serif);
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--fog-stamp);
+  border: 2px solid var(--fog-stamp-line);
+  border-radius: 4px;
+  font-size: 16px;
+  color: var(--fog-stamp-q);
+  box-shadow: 0 2px 8px rgba(26, 26, 24, 0.15);
+  transform: rotate(-3deg);
+  opacity: 0.75;
+}
+
+.go-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 160px;
+  height: 32px;
+  padding: 0 14px;
+  background: var(--action);
+  border-radius: 16px;
+  color: var(--on-action);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 4px 12px rgba(28, 76, 107, 0.35);
+  animation: chip-pop 380ms var(--ease-pop) both;
+}
+
 .cloud-layer {
   position: absolute;
   inset: 0;
@@ -814,6 +856,11 @@ figure {
   --hole: calc(var(--hr) * var(--hz, 1));
   -webkit-mask-image: radial-gradient(circle at var(--hx) var(--hy), transparent calc(var(--hole) * 0.72), #000 var(--hole));
   mask-image: radial-gradient(circle at var(--hx) var(--hy), transparent calc(var(--hole) * 0.72), #000 var(--hole));
+}
+
+.has-holes .cloud-layer {
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
 }
 
 .unlocking .cloud-layer {
@@ -899,6 +946,50 @@ figure {
 .map-count {
   font-size: 13px;
   color: var(--muted);
+}
+
+.trail-filters {
+  position: absolute;
+  top: calc(72px + env(safe-area-inset-top));
+  left: 16px;
+  right: 16px;
+  z-index: 5;
+  display: flex;
+  gap: 8px;
+  animation: fade 300ms ease-out 100ms both;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.trail-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.trail-chip {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  height: 36px;
+  padding: 0 16px;
+  background: var(--surface);
+  border: 1.5px solid var(--line);
+  border-radius: 18px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.trail-chip.active {
+  background: var(--trail-color, var(--action));
+  border-color: var(--trail-color, var(--action));
+  color: #FFFFFF;
+}
+
+.trail-chip:not(.active):active {
+  transform: scale(0.96);
 }
 
 .unlock-stage {
@@ -1231,5 +1322,16 @@ figure {
 @keyframes cloud-drift {
   to {
     transform: translateX(16px);
+  }
+}
+
+@keyframes chip-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
