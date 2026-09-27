@@ -874,10 +874,16 @@ figure {
 }
 
 /* === MAP === */
-@property --hr {
+@property --fog-r {
   syntax: "<length>";
   inherits: true;
-  initial-value: 220px;
+  initial-value: 0px;
+}
+
+@property --fog-feather {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
 }
 
 .map-screen {
@@ -1008,19 +1014,21 @@ figure {
   pointer-events: none;
 }
 
-.has-hole .cloud-layer {
-  --hole: calc(var(--hr) * var(--hz, 1));
-  -webkit-mask-image: radial-gradient(circle at var(--hx) var(--hy), transparent calc(var(--hole) * 0.72), #000 var(--hole));
-  mask-image: radial-gradient(circle at var(--hx) var(--hy), transparent calc(var(--hole) * 0.72), #000 var(--hole));
-}
-
+/* Soft mist mask composite for multiple holes */
 .has-holes .cloud-layer {
   -webkit-mask-composite: source-in;
   mask-composite: intersect;
 }
 
+/* Unlock dissolve animation - mist thins over 1.4s */
 .unlocking .cloud-layer {
-  animation: hole-open 1200ms var(--ease-out) var(--reveal) both;
+  animation: mist-open 1400ms var(--ease-out) var(--reveal) both;
+  filter: blur(1px);
+}
+
+/* Remove blur after unlock animation completes */
+.has-holes:not(.unlocking) .cloud-layer {
+  filter: none;
 }
 
 .cloud-svg {
@@ -1034,6 +1042,13 @@ figure {
   fill: #eef3f7;
   opacity: 0;
   animation: haze-in 1400ms ease-out var(--cloud-delay) forwards;
+}
+
+/* Slightly denser static mist */
+@keyframes haze-in {
+  to {
+    opacity: 0.5;
+  }
 }
 
 .cloud-shadow {
@@ -1391,12 +1406,25 @@ figure {
   }
 }
 
+/* Mist dissolve animation - fog thins from center outward */
+@keyframes mist-open {
+  0% {
+    --fog-r: 0px;
+    --fog-feather: 0;
+  }
+  100% {
+    --fog-r: 260px;
+    --fog-feather: 1;
+  }
+}
+
+/* Legacy fallback */
 @keyframes hole-open {
   from {
-    --hr: 0px;
+    --fog-r: 0px;
   }
   to {
-    --hr: 220px;
+    --fog-r: 260px;
   }
 }
 
@@ -1447,11 +1475,7 @@ figure {
   }
 }
 
-@keyframes haze-in {
-  to {
-    opacity: 0.42;
-  }
-}
+/* Removed duplicate - see updated haze-in above with opacity: 0.5 */
 
 @keyframes cloud-in-left {
   from {
@@ -1489,5 +1513,29 @@ figure {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+/* === REDUCED MOTION === */
+@media (prefers-reduced-motion: reduce) {
+  .cloud-layer,
+  .cloud,
+  .cloud-haze,
+  .stamp-pin,
+  .peek-pin,
+  .go-chip,
+  .unlock-stage,
+  .badge-large {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .unlocking .cloud-layer {
+    filter: none;
+  }
+  
+  .cloud {
+    animation: none;
   }
 }

@@ -239,6 +239,17 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
 
     const unlockedSpots = filteredSpots.filter((s) => unlocks.includes(s.spotId));
     
+    // Soft mist gradient builder - wider softer ramp for warm fog feel
+    const buildMistGradient = (x: number, y: number, z: number, isNewUnlock = false) => {
+      const R = 260 * z; // Wider radius for softer feel
+      if (isNewUnlock) {
+        // During unlock animation, use CSS variable for animated feather
+        return `radial-gradient(circle at ${x}px ${y}px, transparent 0%, transparent calc(var(--fog-r, ${R}px) * 0.42), rgba(0,0,0,0.25) calc(var(--fog-r, ${R}px) * 0.62), rgba(0,0,0,0.7) calc(var(--fog-r, ${R}px) * 0.82), #000 var(--fog-r, ${R}px))`;
+      }
+      // Static soft mist gradient
+      return `radial-gradient(circle at ${x}px ${y}px, transparent 0%, transparent calc(${R}px * 0.42), rgba(0,0,0,0.25) calc(${R}px * 0.62), rgba(0,0,0,0.7) calc(${R}px * 0.82), #000 ${R}px)`;
+    };
+    
     // Throttled fog hole tracking to reduce phone lag
     let trackPending = false;
     const trackHoles = () => {
@@ -246,17 +257,22 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
       trackPending = true;
       requestAnimationFrame(() => {
         trackPending = false;
-        const positions = unlockedSpots.map((s) => {
-          const p = map.project([s.lng, s.lat]);
-          const z = 2 ** (map.getZoom() - ZOOM);
-          return `radial-gradient(circle at ${p.x}px ${p.y}px, transparent calc(220px * ${z} * 0.72), #000 calc(220px * ${z}))`;
-        });
-
+        const z = 2 ** (map.getZoom() - ZOOM);
+        const positions: string[] = [];
+        
+        // Add saved spot first (newest unlock during .unlocking)
         if (saved) {
           const p = map.project([focus.lng, focus.lat]);
-          const z = 2 ** (map.getZoom() - ZOOM);
-          positions.unshift(`radial-gradient(circle at ${p.x}px ${p.y}px, transparent calc(220px * ${z} * 0.72), #000 calc(220px * ${z}))`);
+          positions.push(buildMistGradient(p.x, p.y, z, unlocking));
         }
+        
+        // Add existing unlocked spots (static mist)
+        unlockedSpots.forEach((s) => {
+          // Skip if this is the saved spot (already added above)
+          if (saved && s.spotId === saved.match.spotId) return;
+          const p = map.project([s.lng, s.lat]);
+          positions.push(buildMistGradient(p.x, p.y, z, false));
+        });
 
         const style = cloudsRef.current?.style;
         if (positions.length > 0) {
