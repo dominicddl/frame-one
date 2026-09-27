@@ -1,0 +1,109 @@
+{
+  "includedStills": [
+    {
+      "spotId": "tasm2-red-steps",
+      "originalFilename": "Spiderman 2.png",
+      "filmTitle": "The Amazing Spider-Man 2",
+      "year": 2014,
+      "reference": "https://www.youtube.com/watch?v=hE7P4YT_OuU",
+      "sha256": "1efc8335805e0ee43dd3f5c27036e82abf2ed5aecb59604bbcc79b4c907b03eb",
+      "locationStatus": "Times Square red steps identified; existing approximate catalog pin retained.",
+      "vantageStatus": "approximate real-world reference; see vantage-sources.json"
+    },
+    {
+      "spotId": "enchanted-brooklyn-bridge",
+      "originalFilename": "Enchanted.png",
+      "filmTitle": "Enchanted",
+      "year": 2007,
+      "reference": "https://www.movie-locations.com/movies/e/Enchanted.php",
+      "sha256": "c91bb0d5867f3cb28148670e854ebf7c1923d921b1495e77aaf3ef8593bec5a0",
+      "locationStatus": "Landmark identified; map pin approximate, exact camera position unverified.",
+      "vantageStatus": "approximate real-world reference; see vantage-sources.json"
+    },
+    {
+      "spotId": "friends-benefits-grand-central",
+      "originalFilename": "Friends with Benefits.png",
+      "filmTitle": "Friends with Benefits",
+      "year": 2011,
+      "reference": "https://www.movie-locations.com/movies/f/Friends-With-Benefits.php",
+      "sha256": "7286e57de804bc603f61822f5825ba2226002b22aae4ba55efe5bfc31c9658da",
+      "locationStatus": "Landmark identified; map pin approximate, exact camera position unverified.",
+      "vantageStatus": "approximate real-world reference; see vantage-sources.json"
+    },
+    {
+      "spotId": "home-alone-radio-city",
+      "originalFilename": "Home Alone (2).png",
+      "filmTitle": "Home Alone 2: Lost in New York",
+      "year": 1992,
+      "reference": "https://www.onthesetofnewyork.com/homealone2.html",
+      "sha256": "a617207fb5dd0975448dc9f9d6fb9480e1bf9ea7ece45fc9c9ae1381293f7a97",
+      "locationStatus": "Landmark identified; map pin approximate, exact camera position unverified.",
+      "vantageStatus": "approximate real-world reference; see vantage-sources.json"
+    },
+    {
+      "spotId": "home-alone-battery-park",
+      "originalFilename": "Home Alone.png",
+      "filmTitle": "Home Alone 2: Lost in New York",
+      "year": 1992,
+      "reference": "https://findthatlocation.com/film-title/home-alone-2-lost-in-new-york",
+      "sha256": "f8d363e0369b53ab404b827696973f9bf78fb7a33363a24380f69cca90b4b271",
+      "locationStatus": "Landmark identified; map pin approximate, exact camera position unverified.",
+      "vantageStatus": "context-only real-world reference; see vantage-sources.json"
+    },
+    {
+      "spotId": "joker-bronx-stairs",
+      "originalFilename": "joker-1-2000-6324370b42e6460e89e3b7886c6cc787.jpg",
+      "filmTitle": "Joker",
+      "year": 2019,
+      "reference": "https://oddstops.com/stairs-joker",
+      "sha256": "0d169876997037f010efdaef85a2e9f365952de2d5f3ac9de72c62abedf683eb",
+      "locationStatus": "Landmark identified; map pin approximate, exact camera position unverified.",
+      "vantageStatus": "approximate real-world reference; see vantage-sources.json"
+    },
+    {
+      "spotId": "past-lives-brooklyn-bridge-park",
+      "originalFilename": "Screenshot 2026-09-26 171851.png",
+      "filmTitle": "Past Lives",
+      "year": 2023,
+      "reference": "https://onthesetofnewyork.com/pastlives.html",
+      "sha256": "4501bb940808c550f4c48b1bc44caddf26352d393c335995af6635ee37daa386",
+      "locationStatus": "Landmark identified; map pin approximate, exact camera position unverified.",
+      "vantageStatus": "approximate real-world reference; see vantage-sources.json"
+    },
+    {
+      "spotId": "devil-wears-prada-fifth-avenue",
+      "originalFilename": "Screenshot 2026-09-26 172122.png",
+      "filmTitle": "The Devil Wears Prada",
+      "year": 2006,
+      "reference": "https://onthesetofnewyork.com/thedevilwearsprada.html",
+      "sha256": "cd06b3a65bcb3c226c2f63ff26c1d3de1a840b7f3a9690a8473d104a75cb9586",
+      "locationStatus": "Street corner inferred from De Beers storefront at Fifth Avenue and 55th Street, consistent with location guide; exact camera position unverified.",
+      "vantageStatus": "context-only real-world reference; see vantage-sources.json"
+    },
+    {
+      "spotId": "john-wick-bethesda-terrace",
+      "originalFilename": "Screenshot 2026-09-26 173753.png",
+      "filmTitle": "John Wick: Chapter 2",
+      "year": 2017,
+      "reference": "https://www.atlasofwonders.com/2017/02/filming-locations-john-wick-chapter-two.html",
+      "sha256": "95457e0038e9ecfd790a37877c8e68901da4e006da6e3bb5b44b8c034ec16d04",
+      "locationStatus": "Bethesda Terrace Arcade, Central Park; approximate landmark coordinates.",
+      "vantageStatus": "placeholder; no modern reference supplied"
+    }
+  ],
+  "excluded": [
+    {
+      "originalFilename": "Screenshot 2026-09-26 171049.png",
+      "reason": "User explicitly excluded the Spider-Man 2 pizza-delivery still; not in spots collection."
+    }
+  ],
+  "existingPlaceholderOnlySpots": [
+    "ghostbusters-firehouse",
+    "night-museum-steps"
+  ],
+  "notes": [
+    "Image files copied unchanged; screen controls, borders and watermarks retained.",
+    "Movie origin/location references are curated research, not machine recognition.",
+    "Coordinates are demo landmark pins, not surveyed camera viewpoints."
+  ]
+}

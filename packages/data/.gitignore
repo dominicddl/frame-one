@@ -1,0 +1,3 @@
+# Local research downloads and explicitly excluded uploads are not release assets.
+/research/
+/incoming/

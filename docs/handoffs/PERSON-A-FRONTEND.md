@@ -20,7 +20,7 @@ Help people know NYC and answer: “I’ve seen this movie spot before?”
 - Wrong-spot “walk 180m” flow, no-match dead ends
 - Native iOS — this is a **webapp**
 
-## What you call (Person B)
+## What you call (Dominic's match server)
 `POST /api/match` (or equivalent) with something like:
 ```json
 {
@@ -48,7 +48,7 @@ Expect something like:
 Also use whatever Dominic provides for map seed (spot positions, fog/stamp state). Prefer reading unlock state from a small `GET /api/spots` or local state Dominic defines.
 
 ## Done when
-A stranger can: capture → context → see match → see merge (or vantage → retake → merge) → stamp colours on map → tap stamp → see merge + go next. Wired to real backend responses, not only hardcoded fake UI (unless B is late — then mock the JSON shape above).
+A stranger can: capture → context → see match → see merge (or vantage → retake → merge) → stamp colours on map → tap stamp → see merge + go next. Wired to real backend responses, not only hardcoded fake UI (unless Dominic is late — then mock the JSON shape above).
 
 ## Work with Dominic
 - Ask him for asset URLs and the frozen JSON schema.
