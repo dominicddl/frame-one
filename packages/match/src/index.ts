@@ -268,7 +268,8 @@ app.post("/api/match", async (req, res) => {
     spot = pickSpotByGps(candidates, lat, lng);
     const dist = distanceMeters(lat, lng, spot.lat, spot.lng);
     mergeOk = dist <= MERGE_OK_METERS;
-    matchConfidence = mergeOk ? "high" : "medium";
+    // GPS-only matching caps at "medium" confidence - only vision can claim "high"
+    matchConfidence = mergeOk ? "medium" : "low";
   }
 
   const response: MatchResponse = {

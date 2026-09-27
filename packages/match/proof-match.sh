@@ -97,17 +97,39 @@ fi
 echo "✅ goNext ordering check passed: $GO_NEXT_COUNT items"
 echo ""
 
-# Test 5b: Verify matchConfidence field present
-echo "5b. Verify matchConfidence field in response"
+# Test 5b: Verify matchConfidence field present and GPS-only caps at medium
+echo "5b. Verify matchConfidence field in response (GPS-only never claims high)"
 MATCH_CONFIDENCE_NEAR=$(echo "$MATCH_NEAR" | jq -r '.matchConfidence')
 MATCH_CONFIDENCE_FAR=$(echo "$MATCH_FAR" | jq -r '.matchConfidence')
-echo "Near match confidence: $MATCH_CONFIDENCE_NEAR"
-echo "Far match confidence: $MATCH_CONFIDENCE_FAR"
+echo "Near GPS-only match confidence: $MATCH_CONFIDENCE_NEAR"
+echo "Far GPS-only match confidence: $MATCH_CONFIDENCE_FAR"
 if [[ "$MATCH_CONFIDENCE_NEAR" != "high" ]] && [[ "$MATCH_CONFIDENCE_NEAR" != "medium" ]] && [[ "$MATCH_CONFIDENCE_NEAR" != "low" ]]; then
   echo "❌ FAIL: matchConfidence must be high/medium/low, got '$MATCH_CONFIDENCE_NEAR'"
   exit 1
 fi
-echo "✅ matchConfidence field present and valid"
+# P0 RED-TEAM: GPS-only must never claim "high" confidence
+if [[ "$MATCH_CONFIDENCE_NEAR" == "high" ]]; then
+  echo "❌ FAIL: GPS-only matching must NOT claim 'high' confidence (cap at medium)"
+  exit 1
+fi
+echo "✅ matchConfidence field present and valid (GPS-only capped correctly)"
+echo ""
+
+# Test 5c: Verify suggestions appear on low confidence
+echo "5c. Verify suggestions appear when matchConfidence is low"
+if [[ "$MATCH_CONFIDENCE_FAR" == "low" ]]; then
+  SUGGESTIONS_COUNT=$(echo "$MATCH_FAR" | jq '.suggestions | length')
+  if [[ "$SUGGESTIONS_COUNT" -lt 1 ]]; then
+    echo "❌ FAIL: Low confidence match must include suggestions, got $SUGGESTIONS_COUNT"
+    exit 1
+  fi
+  echo "Far match has $SUGGESTIONS_COUNT soft-miss suggestions"
+  echo "First suggestion: $(echo "$MATCH_FAR" | jq -r '.suggestions[0].spotId') ($(echo "$MATCH_FAR" | jq -r '.suggestions[0].reason'))"
+  echo "✅ suggestions array populated on low confidence match"
+else
+  echo "Far match confidence is '$MATCH_CONFIDENCE_FAR' (not low); suggestions may be absent"
+  echo "✅ Skipped suggestions check (confidence not low)"
+fi
 echo ""
 
 # Test 6: Photo retrieval with mock data URL (no API key path)
@@ -117,11 +139,36 @@ PHOTO_NO_KEY=$(curl -s -X POST "$MATCH_URL/api/match" \
   -d '{"lat":40.7580,"lng":-73.9855,"photoDataUrl":"data:image/png;base64,iVBORw0KGgo="}')
 echo "$PHOTO_NO_KEY" | jq .
 SPOT_ID_NO_KEY=$(echo "$PHOTO_NO_KEY" | jq -r .spotId)
+CONFIDENCE_NO_KEY=$(echo "$PHOTO_NO_KEY" | jq -r .matchConfidence)
 if [[ -z "$SPOT_ID_NO_KEY" ]] || [[ "$SPOT_ID_NO_KEY" == "null" ]]; then
   echo "❌ FAIL: Expected a spot match even without API key, got none"
   exit 1
 fi
-echo "✅ Photo without API key passed: GPS fallback returned $SPOT_ID_NO_KEY"
+# P0 RED-TEAM: Photo+GPS with missing API key must NOT claim high confidence
+if [[ "$CONFIDENCE_NO_KEY" == "high" ]]; then
+  echo "❌ FAIL: Photo+GPS fallback (missing API key) must NOT claim 'high' confidence"
+  exit 1
+fi
+echo "✅ Photo without API key passed: GPS fallback returned $SPOT_ID_NO_KEY (confidence: $CONFIDENCE_NO_KEY)"
+echo ""
+
+# Test 6b: Photo far from spots (no API key) - should get low confidence + suggestions
+echo "6b. POST /api/match with photoDataUrl far away (no API key - should get suggestions)"
+PHOTO_FAR_NO_KEY=$(curl -s -X POST "$MATCH_URL/api/match" \
+  -H "Content-Type: application/json" \
+  -d '{"lat":40.0,"lng":-74.0,"photoDataUrl":"data:image/png;base64,iVBORw0KGgo="}')
+CONFIDENCE_FAR_NO_KEY=$(echo "$PHOTO_FAR_NO_KEY" | jq -r '.matchConfidence')
+SUGGESTIONS_FAR_NO_KEY=$(echo "$PHOTO_FAR_NO_KEY" | jq '.suggestions | length')
+echo "Photo+GPS far match confidence: $CONFIDENCE_FAR_NO_KEY, suggestions: $SUGGESTIONS_FAR_NO_KEY"
+if [[ "$CONFIDENCE_FAR_NO_KEY" == "high" ]]; then
+  echo "❌ FAIL: Photo+GPS far (missing API key) must NOT claim 'high' confidence"
+  exit 1
+fi
+if [[ "$CONFIDENCE_FAR_NO_KEY" == "low" ]] && [[ "$SUGGESTIONS_FAR_NO_KEY" -lt 1 ]]; then
+  echo "❌ FAIL: Low confidence photo+GPS must include suggestions"
+  exit 1
+fi
+echo "✅ Photo far without API key passed: confidence=$CONFIDENCE_FAR_NO_KEY, suggestions=$SUGGESTIONS_FAR_NO_KEY"
 echo ""
 
 # Test 7: Photo retrieval with real API key (if available)
