@@ -220,11 +220,21 @@ export default function MapView({ saved, unlocking, home, onShoot, dock }: MapVi
 
     if (!saved && next.length === 0 && filteredSpots.length > 0) {
       const unlockedSpots = filteredSpots.filter((s) => unlockedIds.includes(s.spotId));
-      const goNextSpots = unlockedSpots.length > 0 ? unlockedSpots.slice(0, 2) : filteredSpots.slice(0, 2);
+      const lockedSpots = filteredSpots.filter((s) => !unlockedIds.includes(s.spotId));
+      const goNextSpots = lockedSpots.length > 0 ? lockedSpots.slice(0, 2) : [];
       goNextSpots.forEach((spot, i) => {
         const pin = `<div class="go-chip" style="animation-delay: ${600 + i * 90}ms">${spot.neighbourhood}</div>`;
         new maplibregl.Marker({ element: markerEl(pin), anchor: "bottom" }).setLngLat([spot.lng, spot.lat]).addTo(map);
       });
+    }
+
+    if (filteredSpots.length > 0) {
+      const unlockedFiltered = filteredSpots.filter((s) => unlockedIds.includes(s.spotId));
+      const spotsToFit = unlockedFiltered.length > 0 ? unlockedFiltered : filteredSpots;
+      const bounds = new maplibregl.LngLatBounds();
+      spotsToFit.forEach((spot) => bounds.extend([spot.lng, spot.lat]));
+      if (saved) bounds.extend([focus.lng, focus.lat]);
+      map.fitBounds(bounds, { padding: { top: 140, right: 40, bottom: 300, left: 40 }, maxZoom: 14, duration: 800 });
     }
 
     const unlockedSpots = filteredSpots.filter((s) => unlockedIds.includes(s.spotId));
