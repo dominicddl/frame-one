@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback, type CSSProperties, type ReactNode } from "react";
 import maplibregl, { type Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { MatchResponse } from "@frame-one/shared";
@@ -117,6 +117,8 @@ function openDirections(lat: number, lng: number) {
 export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const greyRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<MapLibreMap | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
   const [spots, setSpots] = useState<SpotSummary[]>([]);
   const [trailFilter, setTrailFilter] = useState<TrailFilterId>("all");
   const focus = saved ? { lat: saved.match.lat, lng: saved.match.lng } : home;
@@ -126,14 +128,17 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
     getSpots().then(setSpots).catch(console.error);
   }, []);
 
-  const filteredSpots = spots.filter((spot) => {
+  // Memoize filteredSpots to prevent trail filter remounting MapLibre
+  const filteredSpots = useMemo(() => {
     const config = TRAIL_FILTERS[trailFilter];
-    return config.spotIds === null || config.spotIds.includes(spot.spotId);
-  });
+    return spots.filter((spot) => config.spotIds === null || config.spotIds.includes(spot.spotId));
+  }, [spots, trailFilter]);
 
+  // Initialize map once
   useEffect(() => {
     const el = mapRef.current;
-    if (!el) return;
+    if (!el || mapInstanceRef.current) return;
+    
     const map = new maplibregl.Map({
       container: el,
       style: STYLE_URL,
@@ -145,22 +150,44 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
       dragRotate: false,
       pitchWithRotate: false,
     });
+    mapInstanceRef.current = map;
     map.touchZoomRotate.disableRotation();
     map.on("style.load", () => paintHandoff(map));
     map.panBy([0, el.clientHeight * (0.5 - STAMP_HEIGHT)], { duration: 0 });
 
+    return () => {
+      mapInstanceRef.current = null;
+      map.remove();
+    };
+  }, []);
+
+  // Update markers when filteredSpots/unlocks/saved changes (without remounting map)
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    // Clear existing markers
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    // Add saved stamp marker
     if (saved) {
       const stampArt = getStampArt(saved.match.spotId);
       const stamp = `<div class="stamp-pin"><span class="stamp-ripple"></span><span class="stamp-face">${stampArt}</span></div>`;
-      new maplibregl.Marker({ element: markerEl(stamp) }).setLngLat([focus.lng, focus.lat]).addTo(map);
+      const marker = new maplibregl.Marker({ element: markerEl(stamp) }).setLngLat([focus.lng, focus.lat]).addTo(map);
+      markersRef.current.push(marker);
+      
+      // Go-next peek markers with directions click
       saved.match.goNext.forEach((item, i) => {
         const pinEl = markerEl(`<div class="next-pin" style="animation-delay: calc(var(--reveal) + ${600 + i * 90}ms)">${PEEK_SVG}</div>`);
         pinEl.style.cursor = "pointer";
         pinEl.addEventListener("click", () => openDirections(item.lat, item.lng));
-        new maplibregl.Marker({ element: pinEl }).setLngLat([item.lng, item.lat]).addTo(map);
+        const m = new maplibregl.Marker({ element: pinEl }).setLngLat([item.lng, item.lat]).addTo(map);
+        markersRef.current.push(m);
       });
     }
 
+    // Add filtered spot markers
     filteredSpots.forEach((spot) => {
       const isUnlocked = unlocks.includes(spot.spotId);
       const isSaved = saved && saved.match.spotId === spot.spotId;
@@ -168,24 +195,31 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
 
       if (isUnlocked) {
         const stampEl = markerEl(`<div class="stamp-pin unlocked-stamp"><span class="stamp-face">${getStampArt(spot.spotId)}</span></div>`);
-        new maplibregl.Marker({ element: stampEl }).setLngLat([spot.lng, spot.lat]).addTo(map);
+        const m = new maplibregl.Marker({ element: stampEl }).setLngLat([spot.lng, spot.lat]).addTo(map);
+        markersRef.current.push(m);
       } else {
         const peekEl = markerEl(`<div class="peek-pin">${PEEK_SVG}</div>`);
         peekEl.style.cursor = "pointer";
         peekEl.addEventListener("click", () => openDirections(spot.lat, spot.lng));
-        new maplibregl.Marker({ element: peekEl }).setLngLat([spot.lng, spot.lat]).addTo(map);
+        const m = new maplibregl.Marker({ element: peekEl }).setLngLat([spot.lng, spot.lat]).addTo(map);
+        markersRef.current.push(m);
       }
     });
 
+    // Go-chip markers with directions click (fix #7)
     if (!saved && next.length === 0 && filteredSpots.length > 0) {
       const lockedSpots = filteredSpots.filter((s) => !unlocks.includes(s.spotId));
       const goNextSpots = lockedSpots.slice(0, 2);
       goNextSpots.forEach((spot, i) => {
-        const pin = `<div class="go-chip" style="animation-delay: ${600 + i * 90}ms">${spot.neighbourhood}</div>`;
-        new maplibregl.Marker({ element: markerEl(pin), anchor: "bottom" }).setLngLat([spot.lng, spot.lat]).addTo(map);
+        const chipEl = markerEl(`<div class="go-chip" style="animation-delay: ${600 + i * 90}ms">${spot.neighbourhood}</div>`);
+        chipEl.style.cursor = "pointer";
+        chipEl.addEventListener("click", () => openDirections(spot.lat, spot.lng));
+        const m = new maplibregl.Marker({ element: chipEl, anchor: "bottom" }).setLngLat([spot.lng, spot.lat]).addTo(map);
+        markersRef.current.push(m);
       });
     }
 
+    // Fit bounds to visible spots
     if (filteredSpots.length > 0) {
       const unlockedFiltered = filteredSpots.filter((s) => unlocks.includes(s.spotId));
       const spotsToFit = unlockedFiltered.length > 0 ? unlockedFiltered : filteredSpots;
@@ -194,18 +228,24 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
       if (saved) bounds.extend([focus.lng, focus.lat]);
       map.fitBounds(bounds, { padding: { top: 140, right: 40, bottom: 300, left: 40 }, maxZoom: 14, duration: 800 });
     }
+  }, [saved, focus.lat, focus.lng, filteredSpots, unlocks, next.length]);
+
+  // Grey mask update logic with throttled pan updates (fixes #4, #5)
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
 
     const unlockedSpots = filteredSpots.filter((s) => unlocks.includes(s.spotId));
 
-    // Circle cutout for each unlocked spot - neighbourhood "lights up"
-    // BRIEF: 84px radius, 12px feather, rgba(28,28,30,0.72) wash
+    // Build hole with proper multi-gradient support (fix #5)
+    // Use destination-out compositing: each gradient punches a hole
     const buildHole = (x: number, y: number, z: number, isNew = false) => {
       const R = REVEAL_RADIUS * z;
       const feather = REVEAL_FEATHER * z;
       if (isNew) {
-        return `radial-gradient(circle at ${x}px ${y}px, transparent 0%, transparent calc(var(--reveal-r, ${R}px) - ${feather}px), rgba(28,28,30,0.72) var(--reveal-r, ${R}px))`;
+        return `radial-gradient(circle at ${x}px ${y}px, black 0%, black calc(var(--reveal-r, ${R}px) - ${feather}px), transparent var(--reveal-r, ${R}px))`;
       }
-      return `radial-gradient(circle at ${x}px ${y}px, transparent 0%, transparent ${R - feather}px, rgba(28,28,30,0.72) ${R}px)`;
+      return `radial-gradient(circle at ${x}px ${y}px, black 0%, black ${R - feather}px, transparent ${R}px)`;
     };
 
     const updateGreyMask = () => {
@@ -227,24 +267,42 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
       });
 
       if (holes.length > 0) {
+        // Multiple gradients with destination-out: black = hole, transparent = keep
         style.setProperty("-webkit-mask-image", holes.join(", "));
         style.setProperty("mask-image", holes.join(", "));
-        style.setProperty("-webkit-mask-composite", "source-in");
-        style.setProperty("mask-composite", "intersect");
+        // destination-out: wherever mask is black (holes), content is removed
+        style.setProperty("-webkit-mask-composite", "destination-out");
+        style.setProperty("mask-composite", "exclude");
       } else {
         style.removeProperty("-webkit-mask-image");
         style.removeProperty("mask-image");
+        style.removeProperty("-webkit-mask-composite");
+        style.removeProperty("mask-composite");
       }
     };
 
+    // Throttled update during pan (fix #4)
+    let throttleTimer: ReturnType<typeof setTimeout> | null = null;
+    const throttledUpdate = () => {
+      if (throttleTimer) return;
+      throttleTimer = setTimeout(() => {
+        throttleTimer = null;
+        updateGreyMask();
+      }, 32); // ~30fps
+    };
+
     updateGreyMask();
+    map.on("move", throttledUpdate);
     map.on("moveend", updateGreyMask);
     map.on("zoomend", updateGreyMask);
 
     return () => {
-      map.remove();
+      map.off("move", throttledUpdate);
+      map.off("moveend", updateGreyMask);
+      map.off("zoomend", updateGreyMask);
+      if (throttleTimer) clearTimeout(throttleTimer);
     };
-  }, [saved, focus.lat, focus.lng, filteredSpots, unlocks, next.length]);
+  }, [saved, focus.lat, focus.lng, filteredSpots, unlocks, unlocking]);
 
   const savedAlreadyCounted = saved && unlocks.includes(saved.match.spotId);
   const stampCount = saved && !savedAlreadyCounted ? unlocks.length + 1 : unlocks.length;

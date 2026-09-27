@@ -880,6 +880,22 @@ figure {
   animation: cutout-in 500ms var(--ease-pop) 150ms both;
 }
 
+/* Character stamp SVG in polaroid */
+.polaroid-stamp {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40%;
+  height: auto;
+  filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.35));
+  animation: cutout-in 500ms var(--ease-pop) 150ms both;
+}
+
+.polaroid-stamp svg {
+  width: 100%;
+  height: auto;
+}
+
 @keyframes cutout-in {
   from {
     opacity: 0;
@@ -1263,10 +1279,10 @@ figure {
   background: rgba(28, 28, 30, 0.72);
 }
 
-/* When unlocks exist, mask shows through as holes */
+/* Multi-unlock holes: destination-out punches multiple independent holes */
 .has-unlocks .grey-overlay {
-  -webkit-mask-composite: source-in;
-  mask-composite: intersect;
+  -webkit-mask-composite: destination-out;
+  mask-composite: exclude;
 }
 
 /* Unlock reveal animation */

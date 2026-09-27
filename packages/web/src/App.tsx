@@ -17,6 +17,21 @@ interface Place {
 const DEFAULT_PLACE: Place = { name: "Times Square", lat: 40.758, lng: -73.9855 };
 const MIN_SCAN_MS = 2400;
 
+// Per-character stamp art for polaroid cutout (same as MapView)
+const STAMP_ART: Record<string, string> = {
+  "tasm2-red-steps": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 112" width="112" height="112"><defs><clipPath id="clip-tasm"><circle cx="56" cy="56" r="50"/></clipPath></defs><circle cx="56" cy="56" r="53.5" fill="none" stroke="#e87a2a" stroke-width="5"/><circle cx="56" cy="56" r="50" fill="#2a241f"/><g clip-path="url(#clip-tasm)"><ellipse cx="56" cy="48" rx="22" ry="26" fill="#c62828"/><ellipse cx="47" cy="46" rx="8" ry="10" fill="#90caf9" transform="rotate(-12 47 46)"/><ellipse cx="65" cy="46" rx="8" ry="10" fill="#90caf9" transform="rotate(12 65 46)"/><ellipse cx="47" cy="46" rx="4.5" ry="6" fill="#1565c0" transform="rotate(-12 47 46)"/><ellipse cx="65" cy="46" rx="4.5" ry="6" fill="#1565c0" transform="rotate(12 65 46)"/><path d="M56 28 L56 74 M40 40 L72 56 M72 40 L40 56" fill="none" stroke="#8b1a1a" stroke-width="1.2" opacity="0.55"/><path d="M34 78 Q56 68 78 78 L78 112 L34 112 Z" fill="#1565c0"/><path d="M44 78 Q56 72 68 78 L68 112 L44 112 Z" fill="#c62828"/></g></svg>`,
+  "home-alone-radio-city": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 112" width="112" height="112"><defs><clipPath id="clip-kevin"><circle cx="56" cy="56" r="50"/></clipPath></defs><circle cx="56" cy="56" r="53.5" fill="none" stroke="#e87a2a" stroke-width="5"/><circle cx="56" cy="56" r="50" fill="#f7f1ea"/><g clip-path="url(#clip-kevin)"><ellipse cx="56" cy="54" rx="20" ry="22" fill="#e8c4a8"/><path d="M34 48 Q34 28 56 26 Q78 28 78 48 L78 52 Q56 48 34 52 Z" fill="#2a241f"/><ellipse cx="56" cy="28" rx="7" ry="5" fill="#e87a2a"/><circle cx="48" cy="54" r="3.2" fill="#2a241f"/><circle cx="64" cy="54" r="3.2" fill="#2a241f"/><ellipse cx="56" cy="66" rx="5" ry="6" fill="#2a241f"/><path d="M38 74 Q56 70 74 74 L78 88 Q56 92 34 88 Z" fill="#c62828"/><rect x="62" y="78" width="10" height="28" rx="3" fill="#c62828"/><rect x="62" y="100" width="10" height="6" rx="2" fill="#f7f1ea" opacity="0.7"/></g></svg>`,
+  "joker-bronx-stairs": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 112" width="112" height="112"><defs><clipPath id="clip-joker"><circle cx="56" cy="56" r="50"/></clipPath></defs><circle cx="56" cy="56" r="53.5" fill="none" stroke="#e87a2a" stroke-width="5"/><circle cx="56" cy="56" r="50" fill="#2a241f"/><g clip-path="url(#clip-joker)"><path d="M28 58 Q26 22 56 18 Q86 22 84 58 Q78 42 56 40 Q34 42 28 58 Z" fill="#4caf50"/><path d="M30 50 Q28 30 42 26 Q36 40 30 50 M82 50 Q84 30 70 26 Q76 40 82 50" fill="#66bb6a"/><ellipse cx="56" cy="58" rx="18" ry="20" fill="#f5f0e8"/><ellipse cx="48" cy="56" rx="3.5" ry="4" fill="#1a1a1a"/><ellipse cx="64" cy="56" rx="3.5" ry="4" fill="#1a1a1a"/><path d="M42 68 Q56 80 70 68" fill="none" stroke="#c62828" stroke-width="2.5" stroke-linecap="round"/><path d="M36 82 Q56 76 76 82 L80 112 L32 112 Z" fill="#6a1b9a"/><path d="M52 82 L56 96 L60 82" fill="#f5f0e8"/></g></svg>`,
+  "cap-america-times-square": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 112" width="112" height="112"><defs><clipPath id="clip-cap"><circle cx="56" cy="56" r="50"/></clipPath></defs><circle cx="56" cy="56" r="53.5" fill="none" stroke="#e87a2a" stroke-width="5"/><circle cx="56" cy="56" r="50" fill="#f7f1ea"/><g clip-path="url(#clip-cap)"><circle cx="56" cy="56" r="34" fill="#c62828"/><circle cx="56" cy="56" r="26" fill="#f7f1ea"/><circle cx="56" cy="56" r="18" fill="#c62828"/><circle cx="56" cy="56" r="11" fill="#1565c0"/><path d="M56 47 L58.5 53.5 L65.5 53.5 L60 58 L62.2 64.5 L56 60.5 L49.8 64.5 L52 58 L46.5 53.5 L53.5 53.5 Z" fill="#f7f1ea"/></g></svg>`,
+  "friends-benefits-central-park-mall": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 112" width="112" height="112"><defs><clipPath id="clip-fwb"><circle cx="56" cy="56" r="50"/></clipPath></defs><circle cx="56" cy="56" r="53.5" fill="none" stroke="#e87a2a" stroke-width="5"/><circle cx="56" cy="56" r="50" fill="#2a241f"/><g clip-path="url(#clip-fwb)"><ellipse cx="56" cy="90" rx="40" ry="14" fill="#3d5a3d" opacity="0.45"/><circle cx="42" cy="44" r="11" fill="#e8c4a8"/><path d="M30 58 Q42 52 54 58 L54 92 L30 92 Z" fill="#5d4e37"/><path d="M32 38 Q42 30 52 38 Q48 48 42 48 Q36 48 32 38 Z" fill="#2a241f"/><circle cx="70" cy="44" r="11" fill="#e8c4a8"/><path d="M58 58 Q70 52 82 58 L82 92 L58 92 Z" fill="#8b4513"/><path d="M58 40 Q62 28 70 28 Q78 28 82 40 L80 56 Q70 60 60 56 Z" fill="#4a3728"/><path d="M50 62 Q56 56 62 62 Q56 70 50 62 Z" fill="#e87a2a"/></g></svg>`,
+};
+
+const STAMP_FALLBACK = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 112" width="112" height="112"><circle cx="56" cy="56" r="53.5" fill="none" stroke="#e87a2a" stroke-width="5"/><circle cx="56" cy="56" r="50" fill="#2a241f"/><g fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round" transform="translate(28,28)"><rect x="6" y="24" width="44" height="26" rx="4"/><path d="M6 24 9 12h38l3 12"/><path d="M18 12 16 24M30 12l-2 12M42 12l-2 12"/></g></svg>';
+
+function getStampArt(spotId: string): string {
+  return STAMP_ART[spotId] || STAMP_FALLBACK;
+}
+
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -363,7 +378,7 @@ export default function App() {
     setStep("map");
   }
 
-  // Download polaroid image file
+  // Download polaroid image file with character stamp cutout
   const downloadOverlay = useCallback(async () => {
     const sourcePhoto = recreatePhotoUrl || photoDataUrl;
     if (!match || !sourcePhoto) return;
@@ -396,29 +411,28 @@ export default function App() {
     // Draw user photo as polaroid body
     ctx.drawImage(userImg, borderSide, borderTop, photoWidth, photoHeight);
 
-    // Load film still for centered cutout
-    const filmImg = new Image();
-    filmImg.crossOrigin = "anonymous";
-    await new Promise<void>((resolve, reject) => {
-      filmImg.onload = () => resolve();
-      filmImg.onerror = () => reject();
-      filmImg.src = match.stillUrl;
-    }).catch(() => {});
+    // Load character stamp SVG as image for centered cutout
+    const stampSvg = getStampArt(match.spotId);
+    const stampImg = new Image();
+    const svgBlob = new Blob([stampSvg], { type: "image/svg+xml" });
+    const svgUrl = URL.createObjectURL(svgBlob);
+    await new Promise<void>((resolve) => {
+      stampImg.onload = () => resolve();
+      stampImg.onerror = () => resolve();
+      stampImg.src = svgUrl;
+    });
+    URL.revokeObjectURL(svgUrl);
 
-    if (filmImg.complete && filmImg.naturalWidth > 0) {
-      // Draw film cutout centered (50% width)
-      const cutoutWidth = photoWidth * 0.5;
-      const cutoutHeight = (filmImg.height / filmImg.width) * cutoutWidth;
-      const cutoutX = borderSide + (photoWidth - cutoutWidth) / 2;
-      const cutoutY = borderTop + (photoHeight - cutoutHeight) / 2;
+    if (stampImg.complete && stampImg.naturalWidth > 0) {
+      // Draw character stamp centered (40% of photo width)
+      const stampSize = Math.min(photoWidth, photoHeight) * 0.4;
+      const stampX = borderSide + (photoWidth - stampSize) / 2;
+      const stampY = borderTop + (photoHeight - stampSize) / 2;
 
-      // White border + shadow for cutout
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(cutoutX - 3, cutoutY - 3, cutoutWidth + 6, cutoutHeight + 6);
-      ctx.shadowColor = "rgba(0, 0, 0, 0.25)";
-      ctx.shadowBlur = 8;
-      ctx.shadowOffsetY = 3;
-      ctx.drawImage(filmImg, cutoutX, cutoutY, cutoutWidth, cutoutHeight);
+      ctx.shadowColor = "rgba(0, 0, 0, 0.3)";
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetY = 4;
+      ctx.drawImage(stampImg, stampX, stampY, stampSize, stampSize);
       ctx.shadowColor = "transparent";
       ctx.shadowBlur = 0;
       ctx.shadowOffsetY = 0;
@@ -434,7 +448,7 @@ export default function App() {
     ctx.fillStyle = "#8a8580";
     ctx.fillText(String(match.year), canvas.width / 2, canvas.height - borderBottom / 2 + 24);
 
-    // Download as real image file
+    // Download as real image file (data URL a-download)
     const link = document.createElement("a");
     link.download = `frame-one-${match.spotId}.jpg`;
     link.href = canvas.toDataURL("image/jpeg", 0.92);
@@ -667,8 +681,8 @@ export default function App() {
   }
 
   if (step === "result" && match) {
-    // BLOCKER 2: Softer copy for medium confidence
-    const verdictCopy = match.matchConfidence === "high" ? "Exact match." : "Likely match.";
+    // Softer copy for medium confidence
+    const verdictCopy = match.matchConfidence === "high" ? "Exact match." : "Strong match.";
     
     return (
       <div className="screen result">
@@ -868,7 +882,7 @@ export default function App() {
           <div className="polaroid-photo">
             {recreatePhotoUrl && <img src={recreatePhotoUrl} alt="Your recreated photo" className="polaroid-base" />}
             <div className="polaroid-cutout-wrap">
-              <img src={match.stillUrl} alt={`Still from ${match.filmTitle}`} className="polaroid-cutout" />
+              <div className="polaroid-stamp" dangerouslySetInnerHTML={{ __html: getStampArt(match.spotId) }} />
             </div>
           </div>
           <div className="polaroid-label">
