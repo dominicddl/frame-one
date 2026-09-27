@@ -266,7 +266,9 @@ export default function MapView({ saved, unlocking, home, unlocks, onShoot, dock
   }, [saved, focus.lat, focus.lng, filteredSpots, unlocks, next.length]);
 
   const unlockedSpots = spots.filter((s) => unlocks.includes(s.spotId));
-  const stampCount = saved ? unlockedSpots.length + 1 : unlockedSpots.length;
+  // Only +1 if saved spot isn't already counted in unlocks[]
+  const savedAlreadyCounted = saved && unlocks.includes(saved.match.spotId);
+  const stampCount = saved && !savedAlreadyCounted ? unlockedSpots.length + 1 : unlockedSpots.length;
 
   return (
     <div className={`screen map-screen${unlocking ? " unlocking" : ""}${unlockedSpots.length > 0 || saved ? " has-holes" : ""}`}>
