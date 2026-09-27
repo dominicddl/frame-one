@@ -892,7 +892,7 @@ export default function App() {
         </div>
 
         <p className="merge-copy">
-          Your shot with the film still. Save it to your map!
+          Your polaroid with the character stamp. Save it to your map!
         </p>
 
         <div className="recreate-actions">
