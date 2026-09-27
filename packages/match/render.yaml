@@ -1,0 +1,20 @@
+# Render Blueprint for Frame One Match Server
+# Deploy: Connect GitHub repo → Select this file → Deploy
+
+services:
+  - type: web
+    name: frame-one-match-preview
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm ci && npm run build -w @frame-one/shared && npm run build -w @frame-one/data && npm run build -w @frame-one/match
+    startCommand: npm run start -w @frame-one/match
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: OPENAI_API_KEY
+        sync: false  # Set manually in Render dashboard
+    healthCheckPath: /api/health
+    autoDeploy: false  # Manual deploy for preview branch

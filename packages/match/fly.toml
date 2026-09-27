@@ -1,0 +1,25 @@
+# Fly.io configuration for Frame One Match Server
+# Deploy: fly deploy --config packages/match/fly.toml
+# Set secrets: fly secrets set OPENAI_API_KEY=sk-xxx --config packages/match/fly.toml
+
+app = "frame-one-match-preview"
+primary_region = "ewr"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3001"
+
+[http_service]
+  internal_port = 3001
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
