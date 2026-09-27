@@ -22,7 +22,7 @@ figure {
 .micro-label {
   display: block;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--faint);
@@ -44,12 +44,13 @@ figure {
   background: var(--action);
   border: none;
   border-radius: 20px;
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 500;
   color: var(--on-action);
   box-shadow: 0 10px 26px rgba(28, 76, 107, 0.45);
   cursor: pointer;
   transition: transform 0.2s;
+  letter-spacing: 0.01em;
 }
 
 .primary-button:disabled {
@@ -254,9 +255,10 @@ figure {
   height: 60px;
   padding: 0 30px;
   border-radius: 30px;
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 500;
   color: var(--on-action);
+  letter-spacing: 0.01em;
 }
 
 .capture .dock {
@@ -401,11 +403,12 @@ figure {
 }
 
 .question-title {
+  font-family: var(--font-display);
   margin: 20px 0 6px;
-  font-weight: 700;
-  font-size: 28px;
-  line-height: 33px;
-  letter-spacing: -0.02em;
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 34px;
+  letter-spacing: -0.01em;
   color: var(--title);
   animation: drift 400ms var(--ease-out) both;
 }
@@ -476,11 +479,12 @@ figure {
 }
 
 .scanning-title {
+  font-family: var(--font-display);
   margin: 20px 0 6px;
-  font-weight: 700;
-  font-size: 28px;
-  line-height: 33px;
-  letter-spacing: -0.02em;
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 34px;
+  letter-spacing: -0.01em;
   color: var(--title);
   animation: drift 400ms var(--ease-out) both;
 }
@@ -586,11 +590,12 @@ figure {
 }
 
 .film-title {
+  font-family: var(--font-display);
   margin: 0 0 4px;
-  font-weight: 700;
-  font-size: 22px;
-  line-height: 27px;
-  letter-spacing: -0.02em;
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 31px;
+  letter-spacing: -0.01em;
   color: var(--title);
 }
 
@@ -618,11 +623,12 @@ figure {
 }
 
 .recreate-title {
+  font-family: var(--font-display);
   margin: 0;
-  font-weight: 700;
-  font-size: 22px;
-  line-height: 28px;
-  letter-spacing: -0.02em;
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 30px;
+  letter-spacing: -0.01em;
   color: var(--title);
 }
 
@@ -702,7 +708,7 @@ figure {
   background: none;
   border: none;
   font-size: inherit;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--action);
   text-decoration: underline;
   cursor: pointer;
@@ -878,11 +884,12 @@ figure {
 }
 
 .map-title {
-  font-size: 17px;
-  line-height: 22px;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 24px;
+  letter-spacing: -0.01em;
   color: var(--title);
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .map-count {
@@ -906,7 +913,7 @@ figure {
 
 .stamp-eyebrow {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--faint);
@@ -919,12 +926,13 @@ figure {
 }
 
 .unlocked-title {
+  font-family: var(--font-display);
   margin: 26px 0 0;
-  font-weight: 700;
-  font-size: 34px;
-  line-height: 39px;
+  font-weight: 400;
+  font-size: 38px;
+  line-height: 42px;
   text-align: center;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   color: var(--title);
   animation: drift 420ms var(--ease-out) 360ms both;
 }
@@ -991,19 +999,14 @@ figure {
 }
 
 .sheet-title {
-  font-size: 20px;
-  line-height: 25px;
-  letter-spacing: -0.02em;
-  color: var(--title);
-  font-weight: 700;
-}
-
-.sheet-row .sheet-title {
   font-family: var(--font-display);
   font-size: 23px;
-  font-weight: 400;
+  line-height: 28px;
   letter-spacing: -0.01em;
+  color: var(--title);
+  font-weight: 400;
 }
+
 
 .sheet-meta {
   margin: 2px 0 0;
@@ -1057,9 +1060,10 @@ figure {
 }
 
 .go-next-film {
-  font-size: 14px;
+  font-family: var(--font-display);
+  font-size: 15px;
   line-height: 19px;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--ink);
 }
 
@@ -1120,7 +1124,7 @@ figure {
 .dock-item.active {
   padding: 0 18px 0 14px;
   background: var(--action);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--on-action);
 }
 
