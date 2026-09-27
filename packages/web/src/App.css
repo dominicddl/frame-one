@@ -801,11 +801,12 @@
 }
 
 .merge-overlay {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0.65;
-  mix-blend-mode: normal;
+  width: 52%;
+  height: auto;
+  max-height: 34%;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   animation: fade 600ms ease-out 300ms both;
 }
 
