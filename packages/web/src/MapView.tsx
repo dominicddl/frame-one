@@ -13,6 +13,7 @@ interface MapViewProps {
   saved: SavedStamp | null;
   unlocking: boolean;
   home: { lat: number; lng: number };
+  unlockCount?: number;
   onShoot: () => void;
   dock: ReactNode;
 }
@@ -159,7 +160,7 @@ function StampBadge() {
   );
 }
 
-export default function MapView({ saved, unlocking, home, onShoot, dock }: MapViewProps) {
+export default function MapView({ saved, unlocking, home, unlockCount = 0, onShoot, dock }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const cloudsRef = useRef<HTMLDivElement>(null);
   const focus = saved ? { lat: saved.match.lat, lng: saved.match.lng } : home;
@@ -215,7 +216,7 @@ export default function MapView({ saved, unlocking, home, onShoot, dock }: MapVi
 
       <div className="map-header">
         <span className="map-title">New York</span>
-        <span className="map-count">{saved ? "1 stamp" : "No stamps yet"}</span>
+        <span className="map-count">{unlockCount > 0 ? `${unlockCount} stamp${unlockCount !== 1 ? "s" : ""}` : "No stamps yet"}</span>
       </div>
       <a className="osm-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
         © OpenStreetMap contributors · OpenFreeMap
