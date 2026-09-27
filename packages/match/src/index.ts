@@ -80,9 +80,14 @@ function pickSpotByGps(candidates: Spot[], lat: number, lng: number): Spot {
   return best;
 }
 
-function filterCandidatesByQuery(query?: string): Spot[] {
+interface QueryFilterResult {
+  candidates: Spot[];
+  queryMatched: boolean; // true if query matched keywords/film, false if fallback to all
+}
+
+function filterCandidatesByQuery(query?: string): QueryFilterResult {
   if (!query?.trim()) {
-    return spots;
+    return { candidates: spots, queryMatched: true }; // No query = all spots OK
   }
 
   const lowerQuery = query.trim().toLowerCase();
@@ -91,7 +96,12 @@ function filterCandidatesByQuery(query?: string): Spot[] {
     s.filmTitle.toLowerCase().includes(lowerQuery)
   );
 
-  return filtered.length > 0 ? filtered : spots;
+  if (filtered.length > 0) {
+    return { candidates: filtered, queryMatched: true };
+  }
+  
+  // Query provided but no matches — return all spots but flag as unmatched
+  return { candidates: spots, queryMatched: false };
 }
 
 function buildGoNext(matched: Spot): GoNextItem[] {
@@ -203,7 +213,7 @@ app.post("/api/match", async (req, res) => {
     return;
   }
 
-  const candidates = filterCandidatesByQuery(body.movieQuery);
+  const { candidates, queryMatched } = filterCandidatesByQuery(body.movieQuery);
   
   const photoCandidates = candidateSpotIds.length > 0 && body.photoDataUrl
     ? candidates.filter(s => candidateSpotIds.includes(s.spotId))
@@ -214,6 +224,9 @@ app.post("/api/match", async (req, res) => {
   let retrievalScore: number | undefined;
   let matchConfidence: MatchConfidence = "low";
   let usedVision = false;
+  
+  // If query was provided but didn't match any keywords/films, force low confidence
+  const forceQueryMissLow = body.movieQuery?.trim() && !queryMatched;
 
   if (body.photoDataUrl && hasVisionApiKey()) {
     usedVision = true;
@@ -251,14 +264,16 @@ app.post("/api/match", async (req, res) => {
         spot = pickSpotByGps(candidates, lat, lng);
         const dist = distanceMeters(lat, lng, spot.lat, spot.lng);
         mergeOk = dist <= MERGE_OK_METERS;
-        matchConfidence = mergeOk ? "medium" : "low";
+        // Force low if query didn't match any keywords/films
+        matchConfidence = forceQueryMissLow ? "low" : (mergeOk ? "medium" : "low");
       }
     } else {
       console.log("[match] Retrieval returned no result; falling back to GPS");
       spot = pickSpotByGps(candidates, lat, lng);
       const dist = distanceMeters(lat, lng, spot.lat, spot.lng);
       mergeOk = dist <= MERGE_OK_METERS;
-      matchConfidence = mergeOk ? "medium" : "low";
+      // Force low if query didn't match any keywords/films
+      matchConfidence = forceQueryMissLow ? "low" : (mergeOk ? "medium" : "low");
     }
   } else {
     if (body.photoDataUrl) {
@@ -271,7 +286,12 @@ app.post("/api/match", async (req, res) => {
     const dist = distanceMeters(lat, lng, spot.lat, spot.lng);
     mergeOk = dist <= MERGE_OK_METERS;
     // GPS-only matching caps at "medium" confidence - only vision can claim "high"
-    matchConfidence = mergeOk ? "medium" : "low";
+    // Force low if query didn't match any keywords/films (garbage/wrong film)
+    matchConfidence = forceQueryMissLow ? "low" : (mergeOk ? "medium" : "low");
+    
+    if (forceQueryMissLow) {
+      console.log(`[match] Query "${body.movieQuery}" didn't match any keywords; forcing low confidence`);
+    }
   }
 
   const response: MatchResponse = {
