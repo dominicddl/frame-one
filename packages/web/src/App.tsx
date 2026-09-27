@@ -101,6 +101,7 @@ export default function App() {
   const [placeQuery, setPlaceQuery] = useState("");
   const [placeError, setPlaceError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<SoftMissSuggestion[]>([]);
+  const [spotsCache, setSpotsCache] = useState<{ spotId: string; lat: number; lng: number; neighbourhood: string }[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -150,6 +151,7 @@ export default function App() {
         // On API error, try to fetch nearby spots for soft-miss fallback
         getSpots()
           .then((spots) => {
+            setSpotsCache(spots); // Cache for goToSuggestion navigation
             const nearby: SoftMissSuggestion[] = spots
               .slice(0, 3)
               .map((s) => ({
@@ -559,12 +561,34 @@ export default function App() {
     );
   }
 
-  // Navigate to a suggested spot (soft-miss row click)
+  // Navigate to a suggested spot (soft-miss row click) — goes to map centered on that spot
   function goToSuggestion(suggestion: SoftMissSuggestion) {
-    // Set movie query to the suggested film and retake flow
-    setMovieQuery(suggestion.filmTitle);
-    setPhotoDataUrl(null);
-    setStep("capture");
+    // Look up spot coordinates and navigate to map
+    const lookupAndNavigate = (spots: typeof spotsCache) => {
+      const spot = spots.find((s) => s.spotId === suggestion.spotId);
+      if (spot) {
+        setPlace({ name: spot.neighbourhood, lat: spot.lat, lng: spot.lng });
+      }
+      stopCamera();
+      setJustUnlocked(false);
+      setStep("map");
+    };
+
+    if (spotsCache.length > 0) {
+      lookupAndNavigate(spotsCache);
+    } else {
+      getSpots()
+        .then((spots) => {
+          setSpotsCache(spots);
+          lookupAndNavigate(spots);
+        })
+        .catch(() => {
+          // Fallback: go to map without centering on spot
+          stopCamera();
+          setJustUnlocked(false);
+          setStep("map");
+        });
+    }
   }
 
   // Soft-miss: ONLY when matchConfidence === "low" (wrong/weak film match)
