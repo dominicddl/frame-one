@@ -50,6 +50,19 @@ app.use("/assets/spots", express.static(path.join(dataPackageDir, "assets", "spo
 // Serve test harness
 app.use("/harness", express.static(path.join(__dirname, "..", "harness")));
 
+// Serve web build (single-host mode: match server serves both API + web)
+const webDistPath = path.join(__dirname, "..", "..", "web", "dist");
+if (fs.existsSync(webDistPath)) {
+  app.use(express.static(webDistPath));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api") || req.path.startsWith("/assets") || req.path.startsWith("/harness")) {
+      return next();
+    }
+    res.sendFile(path.join(webDistPath, "index.html"));
+  });
+  console.log(`[match] Serving web from ${webDistPath}`);
+}
+
 /** Haversine distance in meters */
 function distanceMeters(
   lat1: number,

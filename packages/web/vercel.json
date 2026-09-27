@@ -3,5 +3,15 @@
   "buildCommand": "cd ../.. && npm run build -w @frame-one/shared && npm run build -w @frame-one/web",
   "outputDirectory": "dist",
   "installCommand": "cd ../.. && npm ci",
-  "framework": "vite"
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://frame-one-match.fly.dev/api/:path*"
+    },
+    {
+      "source": "/assets/spots/:path*",
+      "destination": "https://frame-one-match.fly.dev/assets/spots/:path*"
+    }
+  ]
 }

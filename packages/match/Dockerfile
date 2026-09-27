@@ -1,4 +1,4 @@
-# Frame One Match Server
+# Frame One Match Server (serves API + web in single-host mode)
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -8,19 +8,22 @@ COPY package*.json ./
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/data/package.json ./packages/data/
 COPY packages/match/package.json ./packages/match/
+COPY packages/web/package.json ./packages/web/
 
-# Install dependencies
-RUN npm ci --workspace=@frame-one/shared --workspace=@frame-one/data --workspace=@frame-one/match
+# Install all dependencies (including web for build)
+RUN npm ci
 
 # Copy source files
 COPY packages/shared ./packages/shared
 COPY packages/data ./packages/data
 COPY packages/match ./packages/match
+COPY packages/web ./packages/web
 
-# Build packages in order
+# Build packages in order (including web for single-host serving)
 RUN npm run build -w @frame-one/shared
 RUN npm run build -w @frame-one/data
 RUN npm run build -w @frame-one/match
+RUN npm run build -w @frame-one/web
 
 # Production image
 FROM node:20-alpine
@@ -39,6 +42,8 @@ COPY --from=builder /app/packages/data/assets ./packages/data/assets
 COPY --from=builder /app/packages/match/package.json ./packages/match/
 COPY --from=builder /app/packages/match/dist ./packages/match/dist
 COPY --from=builder /app/packages/match/harness ./packages/match/harness
+# Include web dist for single-host mode
+COPY --from=builder /app/packages/web/dist ./packages/web/dist
 
 ENV NODE_ENV=production
 ENV PORT=3001

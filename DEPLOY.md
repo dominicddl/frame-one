@@ -1,15 +1,56 @@
 # Frame One Deploy Guide
 
-## Architecture
+## Architecture Options
 
-- **Web** (Vercel): Static Vite build from `packages/web`
-- **Match** (Fly.io / Render): Node.js API server from `packages/match`
+### Option 1: Single Host (Recommended for Demo)
+- **Match server serves both API + Web** (one URL, no CORS, no dual tunnels)
+- Fly.io / Render / Docker container runs match server which serves the web build
+
+### Option 2: Split Hosts
+- **Web** (Vercel): Static Vite build with `/api` rewrites to match server
+- **Match** (Fly.io / Render): API server only
 
 ---
 
-## Web (Vercel)
+## Local Development (Same-Origin Proxy)
 
-### Setup
+Vite dev server proxies `/api/*` to match server automatically:
+
+```bash
+# Terminal 1: Start match server
+cd packages/match && npm run dev
+
+# Terminal 2: Start web dev server
+cd packages/web && npm run dev
+```
+
+Open `http://localhost:5173` — all `/api/*` calls proxy to `localhost:3001`.
+
+For custom match URL (e.g., remote server):
+```bash
+MATCH_URL=https://my-match-server.fly.dev npm run dev
+```
+
+---
+
+## Single-Host Deploy (Fly.io / Render)
+
+The match server automatically serves the web build if `packages/web/dist` exists.
+
+### Fly.io
+
+```bash
+cd packages/match
+fly deploy  # Dockerfile builds both match + web
+```
+
+After deploy, open `https://frame-one-match-preview.fly.dev` — serves web AND API from same URL.
+
+---
+
+## Split-Host Deploy (Vercel + Fly)
+
+### Web (Vercel)
 
 1. Go to [vercel.com](https://vercel.com) → Import Project
 2. Connect GitHub repo `dominicddl/frame-one`
@@ -17,11 +58,7 @@
    - **Root Directory**: `packages/web`
    - **Framework**: Vite
    - **Build Command**: (auto-detected from vercel.json)
-4. Set Environment Variable:
-   ```
-   VITE_API_URL = https://frame-one-match-preview.fly.dev
-   ```
-   (Replace with your actual Match server URL)
+4. **No VITE_API_URL needed** — `vercel.json` has rewrites to proxy `/api/*` to match server
 
 ### Preview Deploys
 
