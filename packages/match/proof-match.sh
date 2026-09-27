@@ -97,6 +97,19 @@ fi
 echo "✅ goNext ordering check passed: $GO_NEXT_COUNT items"
 echo ""
 
+# Test 5b: Verify matchConfidence field present
+echo "5b. Verify matchConfidence field in response"
+MATCH_CONFIDENCE_NEAR=$(echo "$MATCH_NEAR" | jq -r '.matchConfidence')
+MATCH_CONFIDENCE_FAR=$(echo "$MATCH_FAR" | jq -r '.matchConfidence')
+echo "Near match confidence: $MATCH_CONFIDENCE_NEAR"
+echo "Far match confidence: $MATCH_CONFIDENCE_FAR"
+if [[ "$MATCH_CONFIDENCE_NEAR" != "high" ]] && [[ "$MATCH_CONFIDENCE_NEAR" != "medium" ]] && [[ "$MATCH_CONFIDENCE_NEAR" != "low" ]]; then
+  echo "❌ FAIL: matchConfidence must be high/medium/low, got '$MATCH_CONFIDENCE_NEAR'"
+  exit 1
+fi
+echo "✅ matchConfidence field present and valid"
+echo ""
+
 # Test 6: Photo retrieval with mock data URL (no API key path)
 echo "6. POST /api/match with photoDataUrl (no API key - GPS fallback)"
 PHOTO_NO_KEY=$(curl -s -X POST "$MATCH_URL/api/match" \
