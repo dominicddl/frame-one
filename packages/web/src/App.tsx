@@ -132,12 +132,9 @@ export default function App() {
         if (cancelled) return;
         setMatch(result);
         
-        // Soft-miss: when matchConfidence is low OR suggestions are present
-        // This is for wrong/weak film match — NOT for GPS distance issues
-        const isLowConfidence = result.matchConfidence === "low";
-        const hasSuggestions = result.suggestions && result.suggestions.length > 0;
-        
-        if (isLowConfidence || hasSuggestions) {
+        // Soft-miss ONLY when matchConfidence is low (wrong/weak film match)
+        // Do NOT soft-miss on medium/high just because suggestions exist
+        if (result.matchConfidence === "low") {
           // Show soft-miss "Did you mean...?" with curated suggestions
           setSuggestions(result.suggestions || []);
           setStep("soft-miss");
@@ -410,7 +407,7 @@ export default function App() {
 
         <div className="location-card">
           <svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <circle cx="10" cy="10" r="9" fill="#1C4C6B" />
+            <circle cx="10" cy="10" r="9" fill="var(--action, #e87a2a)" />
             <path d="m5.6 10.3 2.9 2.8 5.9-6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <div className="location-info">
@@ -498,7 +495,7 @@ export default function App() {
         <div className="scanning-steps">
           <div className="step done">
             <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <circle cx="10" cy="10" r="9" fill="#1C4C6B" />
+              <circle cx="10" cy="10" r="9" fill="var(--action, #e87a2a)" />
               <path d="m5.6 10.3 2.9 2.8 5.9-6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <span>Scenes filmed near you</span>
@@ -570,7 +567,7 @@ export default function App() {
     setStep("capture");
   }
 
-  // Soft-miss: when matchConfidence is low or suggestions present
+  // Soft-miss: ONLY when matchConfidence === "low" (wrong/weak film match)
   // Shows "Did you mean...?" with curated alternatives
   if (step === "soft-miss") {
     return (

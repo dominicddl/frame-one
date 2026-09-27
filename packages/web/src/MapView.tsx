@@ -143,7 +143,7 @@ function Clouds() {
 function StampBadge() {
   return (
     <svg width="168" height="168" viewBox="0 0 188 188" fill="none" aria-hidden="true">
-      <circle cx="94" cy="94" r="92" fill="#1C4C6B" />
+      <circle cx="94" cy="94" r="92" fill="var(--action, #e87a2a)" />
       <circle cx="94" cy="94" r="80" stroke="#FFFFFF" strokeOpacity="0.35" strokeWidth="2" />
       <g fill="#FFFFFF" fillOpacity="0.9">
         <circle cx="94" cy="28" r="8" />
@@ -155,7 +155,7 @@ function StampBadge() {
         <circle cx="47" cy="141" r="8" />
         <circle cx="141" cy="141" r="8" />
       </g>
-      <circle cx="94" cy="94" r="44" fill="#123A52" />
+      <circle cx="94" cy="94" r="44" fill="var(--accent-dark, #c45a1a)" />
       <circle cx="94" cy="94" r="35" stroke="#FFFFFF" strokeOpacity="0.3" strokeDasharray="3 4" />
     </svg>
   );
